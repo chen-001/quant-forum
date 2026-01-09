@@ -89,7 +89,20 @@ export default function HomePage() {
               <Link href={`/post/${post.id}`} key={post.id} style={{ textDecoration: 'none' }}>
                 <article className="post-card">
                   <div className="post-info">
-                    <h2 className="post-title">{post.title}</h2>
+                    <h2 className="post-title">
+                      {post.is_pinned ? (
+                        <span style={{
+                          marginRight: '8px',
+                          padding: '2px 6px',
+                          background: 'var(--warning)',
+                          color: '#000',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}>📌 置顶</span>
+                      ) : null}
+                      {post.title}
+                    </h2>
                     <div className="post-meta">
                       <span className="post-meta-item">
                         👤 {post.author_name}

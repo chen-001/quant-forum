@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import MarkdownRenderer, { MarkdownEditor } from '@/components/MarkdownRenderer';
 import RatingPanel from '@/components/RatingPanel';
+import TableEditor from '@/components/TableEditor';
+import InteractiveContent from '@/components/InteractiveContent';
 
 const MAX_OPEN_FRAMES = 4;
 
@@ -23,13 +25,59 @@ export default function PostDetailPage({ params }) {
     const [replyTo, setReplyTo] = useState(null);
     const [newResult, setNewResult] = useState('');
     const [showResultForm, setShowResultForm] = useState(false);
+    const [tableSaveStatus, setTableSaveStatus] = useState(null); // 'saving', 'saved', 'error'
+    const [ideasContent, setIdeasContent] = useState('');
+    const [ideasEditing, setIdeasEditing] = useState(false);
+    const [ideasSaving, setIdeasSaving] = useState(false);
+    const [ideasLastEditor, setIdeasLastEditor] = useState(null);
+    const saveTimeoutRef = useRef(null);
     const router = useRouter();
+
+    // 防抖保存表格数据
+    const saveTableData = useCallback(async (data) => {
+        if (!data) return;
+
+        setTableSaveStatus('saving');
+        try {
+            const res = await fetch(`/api/posts/${id}/table`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tableData: data.tableData,
+                    columnWidths: data.columnWidths,
+                    rowHeights: data.rowHeights
+                })
+            });
+
+            if (res.ok) {
+                setTableSaveStatus('saved');
+                setTimeout(() => setTableSaveStatus(null), 2000);
+            } else {
+                setTableSaveStatus('error');
+            }
+        } catch (error) {
+            console.error('Failed to save table:', error);
+            setTableSaveStatus('error');
+        }
+    }, [id]);
+
+    const handleTableChange = useCallback((data) => {
+        // 清除之前的定时器
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        // 1秒后自动保存
+        saveTimeoutRef.current = setTimeout(() => {
+            saveTableData(data);
+        }, 1000);
+    }, [saveTableData]);
 
     useEffect(() => {
         fetchUser();
         fetchPost();
         fetchComments();
         fetchResults();
+        fetchIdeas();
     }, [id]);
 
     const fetchUser = async () => {
@@ -76,6 +124,42 @@ export default function PostDetailPage({ params }) {
             }
         } catch (error) {
             console.error('Failed to fetch results:', error);
+        }
+    };
+
+    const fetchIdeas = async () => {
+        try {
+            const res = await fetch(`/api/posts/${id}/ideas`);
+            const data = await res.json();
+            if (res.ok) {
+                setIdeasContent(data.content || '');
+                setIdeasLastEditor(data.lastEditorName);
+            }
+        } catch (error) {
+            console.error('Failed to fetch ideas:', error);
+        }
+    };
+
+    const handleIdeasSave = async () => {
+        setIdeasSaving(true);
+        try {
+            const res = await fetch(`/api/posts/${id}/ideas`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: ideasContent })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setIdeasLastEditor(data.lastEditorName);
+                setIdeasEditing(false);
+            } else {
+                alert(data.error || '保存失败');
+            }
+        } catch (error) {
+            console.error('Failed to save ideas:', error);
+            alert('保存失败，请重试');
+        } finally {
+            setIdeasSaving(false);
         }
     };
 
@@ -253,9 +337,42 @@ export default function PostDetailPage({ params }) {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
                             {post.title}
+                            {post.is_pinned ? (
+                                <span style={{
+                                    marginLeft: '12px',
+                                    padding: '2px 8px',
+                                    background: 'var(--warning)',
+                                    color: '#000',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    fontWeight: '600'
+                                }}>📌 置顶</span>
+                            ) : null}
                         </h1>
                         {user && user.id === post.author_id && (
                             <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{
+                                        background: post.is_pinned ? 'var(--warning)' : 'var(--bg-tertiary)',
+                                        color: post.is_pinned ? '#000' : 'var(--text-primary)'
+                                    }}
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch(`/api/posts/${id}/pin`, { method: 'POST' });
+                                            if (res.ok) {
+                                                fetchPost(); // 刷新帖子数据
+                                            } else {
+                                                const data = await res.json();
+                                                alert(data.error || '操作失败');
+                                            }
+                                        } catch (error) {
+                                            alert('操作失败，请重试');
+                                        }
+                                    }}
+                                >
+                                    {post.is_pinned ? '📌 取消置顶' : '📌 置顶帖子'}
+                                </button>
                                 <a
                                     href={`/post/${id}/edit`}
                                     className="btn btn-secondary btn-sm"
@@ -291,98 +408,208 @@ export default function PostDetailPage({ params }) {
                     </div>
                 </div>
 
-                {/* 正文内容 */}
+                {/* 正文内容 - 使用 InteractiveContent 支持逐行评论和高亮 */}
                 {post.content && (
                     <div className="card" style={{ marginBottom: '24px' }}>
-                        <MarkdownRenderer content={post.content} />
+                        <InteractiveContent
+                            content={post.content}
+                            postId={id}
+                            user={user}
+                        />
                     </div>
                 )}
 
                 {/* 主体布局：预览区 + 讨论区 */}
                 <div className="post-detail">
                     <div className="post-main">
-                        {/* 网页预览区 */}
-                        <div className="preview-section">
-                            <div className="preview-header">
-                                <h3 className="preview-title">🔗 AI对话链接</h3>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                                    点击链接展开预览（最多{MAX_OPEN_FRAMES}个）
-                                </span>
+                        {/* 表格或链接预览区 */}
+                        {post.post_type === 'table' ? (
+                            /* 表格帖子显示 - 登录用户可编辑 */
+                            <div className="preview-section">
+                                <div className="preview-header">
+                                    <h3 className="preview-title">📊 表格内容</h3>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        {tableSaveStatus === 'saving' && (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                                ⏳ 保存中...
+                                            </span>
+                                        )}
+                                        {tableSaveStatus === 'saved' && (
+                                            <span style={{ color: 'var(--success)', fontSize: '13px' }}>
+                                                ✓ 已保存
+                                            </span>
+                                        )}
+                                        {tableSaveStatus === 'error' && (
+                                            <span style={{ color: 'var(--error)', fontSize: '13px' }}>
+                                                ✗ 保存失败
+                                            </span>
+                                        )}
+                                        {user ? (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                                点击单元格编辑，更改自动保存
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                                登录后可编辑
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ padding: 'var(--spacing-md)' }}>
+                                    <TableEditor
+                                        initialData={post.tableData || [['']]}
+                                        initialColumnWidths={post.columnWidths || []}
+                                        initialRowHeights={post.rowHeights || []}
+                                        onChange={user ? handleTableChange : undefined}
+                                        readOnly={!user}
+                                    />
+                                </div>
                             </div>
+                        ) : (
+                            /* 链接帖子显示 */
+                            <div className="preview-section">
+                                <div className="preview-header">
+                                    <h3 className="preview-title">🔗 AI对话链接</h3>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                        点击链接展开预览（最多{MAX_OPEN_FRAMES}个）
+                                    </span>
+                                </div>
 
-                            {/* 链接选择 */}
-                            <div className="link-chips">
-                                {post.links?.map((link) => {
-                                    const isOpen = openLinks.some(l => l.id === link.id);
-                                    return (
-                                        <div
-                                            key={link.id}
-                                            className={`link-chip ${isOpen ? 'active' : ''}`}
-                                            onClick={() => toggleLink(link)}
+                                {/* 链接选择 */}
+                                <div className="link-chips">
+                                    {post.links?.map((link) => {
+                                        const isOpen = openLinks.some(l => l.id === link.id);
+                                        return (
+                                            <div
+                                                key={link.id}
+                                                className={`link-chip ${isOpen ? 'active' : ''}`}
+                                                onClick={() => toggleLink(link)}
+                                            >
+                                                <span>{link.title || `链接 ${link.order_num + 1}`}</span>
+                                                {isOpen && (
+                                                    <span
+                                                        className="link-chip-close"
+                                                        onClick={(e) => { e.stopPropagation(); closeLink(link.id); }}
+                                                    >
+                                                        ✕
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* iframe预览 */}
+                                {openLinks.length > 0 ? (
+                                    <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
+                                        {openLinks.map((link) => (
+                                            <div key={link.id} className="preview-frame">
+                                                <div className="preview-frame-header">
+                                                    <span className="preview-frame-url" title={link.url}>
+                                                        {link.title || link.url}
+                                                    </span>
+                                                    <a
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-sm btn-ghost"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        ↗ 新窗口
+                                                    </a>
+                                                </div>
+                                                <iframe
+                                                    src={link.url}
+                                                    className="preview-iframe"
+                                                    sandbox="allow-scripts allow-same-origin allow-popups"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'flex';
+                                                    }}
+                                                />
+                                                <div className="preview-blocked" style={{ display: 'none' }}>
+                                                    <p>⚠️ 该网站禁止嵌入显示</p>
+                                                    <a
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-primary"
+                                                        style={{ marginTop: '16px' }}
+                                                    >
+                                                        在新窗口打开
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="empty-state" style={{ padding: '48px' }}>
+                                        <p>👆 点击上方链接以展开预览</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 很有意思的想法区 - 仅链接帖子显示 */}
+                        {post.post_type !== 'table' && (
+                            <div className="ideas-section" style={{
+                                background: 'var(--bg-card)',
+                                borderRadius: 'var(--radius-lg)',
+                                padding: 'var(--spacing-lg)',
+                                marginBottom: 'var(--spacing-lg)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>💡 很有意思的想法区</h3>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        {ideasSaving && (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>保存中...</span>
+                                        )}
+                                        {ideasLastEditor && !ideasEditing && (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                                                上次编辑: {ideasLastEditor}
+                                            </span>
+                                        )}
+                                        {user && (
+                                            <button
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => setIdeasEditing(!ideasEditing)}
+                                            >
+                                                {ideasEditing ? '取消' : '✏️ 编辑'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {ideasEditing ? (
+                                    <div>
+                                        <MarkdownEditor
+                                            value={ideasContent}
+                                            onChange={setIdeasContent}
+                                            placeholder="分享你觉得有意思的想法，任何人都可以编辑这里..."
+                                            minHeight={200}
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ marginTop: '12px' }}
+                                            onClick={handleIdeasSave}
+                                            disabled={ideasSaving}
                                         >
-                                            <span>{link.title || `链接 ${link.order_num + 1}`}</span>
-                                            {isOpen && (
-                                                <span
-                                                    className="link-chip-close"
-                                                    onClick={(e) => { e.stopPropagation(); closeLink(link.id); }}
-                                                >
-                                                    ✕
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                            保存想法
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                        {ideasContent ? (
+                                            <MarkdownRenderer content={ideasContent} />
+                                        ) : (
+                                            <div className="empty-state" style={{ padding: '32px' }}>
+                                                <p>暂无内容，{user ? '点击编辑添加想法' : '登录后可以编辑'}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-
-                            {/* iframe预览 */}
-                            {openLinks.length > 0 ? (
-                                <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
-                                    {openLinks.map((link) => (
-                                        <div key={link.id} className="preview-frame">
-                                            <div className="preview-frame-header">
-                                                <span className="preview-frame-url" title={link.url}>
-                                                    {link.title || link.url}
-                                                </span>
-                                                <a
-                                                    href={link.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="btn btn-sm btn-ghost"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    ↗ 新窗口
-                                                </a>
-                                            </div>
-                                            <iframe
-                                                src={link.url}
-                                                className="preview-iframe"
-                                                sandbox="allow-scripts allow-same-origin allow-popups"
-                                                onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                    e.target.nextSibling.style.display = 'flex';
-                                                }}
-                                            />
-                                            <div className="preview-blocked" style={{ display: 'none' }}>
-                                                <p>⚠️ 该网站禁止嵌入显示</p>
-                                                <a
-                                                    href={link.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="btn btn-primary"
-                                                    style={{ marginTop: '16px' }}
-                                                >
-                                                    在新窗口打开
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="empty-state" style={{ padding: '48px' }}>
-                                    <p>👆 点击上方链接以展开预览</p>
-                                </div>
-                            )}
-                        </div>
+                        )}
 
                         {/* 成果记录区 */}
                         <div className="results-section">
@@ -435,13 +662,15 @@ export default function PostDetailPage({ params }) {
                             )}
                         </div>
 
-                        {/* 评分区 */}
-                        <RatingPanel
-                            postId={id}
-                            averages={ratings}
-                            userRating={userRating}
-                            onUpdate={(newRatings) => setRatings(newRatings)}
-                        />
+                        {/* 评分区 - 仅链接帖子显示 */}
+                        {post.post_type !== 'table' && (
+                            <RatingPanel
+                                postId={id}
+                                averages={ratings}
+                                userRating={userRating}
+                                onUpdate={(newRatings) => setRatings(newRatings)}
+                            />
+                        )}
                     </div>
 
                     {/* 想法讨论区（侧边栏） */}
@@ -507,8 +736,8 @@ export default function PostDetailPage({ params }) {
                             )}
                         </div>
                     </div>
-                </div>
-            </main>
+                </div >
+            </main >
         </>
     );
 }

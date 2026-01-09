@@ -20,10 +20,31 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     content TEXT,
+    post_type TEXT DEFAULT 'link' CHECK(post_type IN ('link', 'table')),
     author_id INTEGER NOT NULL,
+    is_pinned INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES users(id)
+  );
+`);
+
+// 为现有表添加 post_type 列（如果不存在）
+try {
+  db.exec(`ALTER TABLE posts ADD COLUMN post_type TEXT DEFAULT 'link' CHECK(post_type IN ('link', 'table'))`);
+} catch (e) {
+  // 列已存在，忽略错误
+}
+
+// 创建表格帖子数据表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_table_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL UNIQUE,
+    table_data TEXT NOT NULL,
+    column_widths TEXT,
+    row_heights TEXT,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
   );
 `);
 
@@ -101,5 +122,49 @@ db.exec(`
   );
 `);
 
+// 创建行级评论表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS line_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    line_index INTEGER NOT NULL,
+    author_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (author_id) REFERENCES users(id)
+  );
+`);
+
+// 创建文字高亮表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS highlights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    line_index INTEGER NOT NULL,
+    start_offset INTEGER NOT NULL,
+    end_offset INTEGER NOT NULL,
+    color TEXT DEFAULT 'yellow',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+`);
+
+// 创建帖子想法区表（共享可编辑Markdown区域）
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_ideas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL DEFAULT '',
+    last_editor_id INTEGER,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (last_editor_id) REFERENCES users(id)
+  );
+`);
+
 console.log('数据库表创建成功！');
 db.close();
+

@@ -87,7 +87,7 @@ export const postQueries = {
         COALESCE((SELECT AVG((novelty + test_effect + extensibility + creativity + fun + completeness) / 6.0) FROM ratings WHERE post_id = p.id), 0) as avg_total
       FROM posts p
       JOIN users u ON p.author_id = u.id
-      ORDER BY ${orderColumn} ${orderDirection}
+      ORDER BY p.is_pinned DESC, ${orderColumn} ${orderDirection}
       LIMIT ? OFFSET ?
     `);
         return stmt.all(limit, offset);
@@ -115,12 +115,59 @@ export const postQueries = {
         const db = getDb();
         // 由于外键约束，需要先删除关联数据
         db.prepare('DELETE FROM post_links WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM post_table_data WHERE post_id = ?').run(postId);
         db.prepare('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE post_id = ?)').run(postId);
         db.prepare('DELETE FROM comments WHERE post_id = ?').run(postId);
         db.prepare('DELETE FROM ratings WHERE post_id = ?').run(postId);
         db.prepare('DELETE FROM results WHERE post_id = ?').run(postId);
         const stmt = db.prepare('DELETE FROM posts WHERE id = ?');
         return stmt.run(postId);
+    },
+
+    togglePin: (postId, isPinned) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE posts SET is_pinned = ? WHERE id = ?');
+        return stmt.run(isPinned ? 1 : 0, postId);
+    },
+
+    // 表格帖子相关操作
+    createTablePost: (title, content, authorId, tableData, columnWidths, rowHeights) => {
+        const db = getDb();
+        const postStmt = db.prepare('INSERT INTO posts (title, content, author_id, post_type) VALUES (?, ?, ?, ?)');
+        const result = postStmt.run(title, content, authorId, 'table');
+        const postId = result.lastInsertRowid;
+
+        const tableStmt = db.prepare('INSERT INTO post_table_data (post_id, table_data, column_widths, row_heights) VALUES (?, ?, ?, ?)');
+        tableStmt.run(postId, JSON.stringify(tableData), JSON.stringify(columnWidths || []), JSON.stringify(rowHeights || []));
+
+        return result;
+    },
+
+    getTableData: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM post_table_data WHERE post_id = ?');
+        const row = stmt.get(postId);
+        if (row) {
+            return {
+                ...row,
+                table_data: JSON.parse(row.table_data),
+                column_widths: row.column_widths ? JSON.parse(row.column_widths) : [],
+                row_heights: row.row_heights ? JSON.parse(row.row_heights) : []
+            };
+        }
+        return null;
+    },
+
+    saveTableData: (postId, tableData, columnWidths, rowHeights) => {
+        const db = getDb();
+        const stmt = db.prepare('INSERT INTO post_table_data (post_id, table_data, column_widths, row_heights) VALUES (?, ?, ?, ?)');
+        return stmt.run(postId, JSON.stringify(tableData), JSON.stringify(columnWidths || []), JSON.stringify(rowHeights || []));
+    },
+
+    updateTableData: (postId, tableData, columnWidths, rowHeights) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE post_table_data SET table_data = ?, column_widths = ?, row_heights = ? WHERE post_id = ?');
+        return stmt.run(JSON.stringify(tableData), JSON.stringify(columnWidths || []), JSON.stringify(rowHeights || []), postId);
     }
 };
 
@@ -264,5 +311,88 @@ export const ratingQueries = {
         const db = getDb();
         const stmt = db.prepare('SELECT * FROM ratings WHERE post_id = ? AND user_id = ?');
         return stmt.get(postId, userId);
+    }
+};
+
+// 行级评论相关操作
+export const lineCommentQueries = {
+    create: (postId, lineIndex, authorId, content) => {
+        const db = getDb();
+        const stmt = db.prepare('INSERT INTO line_comments (post_id, line_index, author_id, content) VALUES (?, ?, ?, ?)');
+        const result = stmt.run(postId, lineIndex, authorId, content);
+        postQueries.updateTime(postId);
+        return result;
+    },
+
+    findByPostId: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+      SELECT lc.*, u.username as author_name
+      FROM line_comments lc
+      JOIN users u ON lc.author_id = u.id
+      WHERE lc.post_id = ?
+      ORDER BY lc.line_index, lc.created_at ASC
+    `);
+        return stmt.all(postId);
+    },
+
+    delete: (id, authorId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM line_comments WHERE id = ? AND author_id = ?');
+        return stmt.run(id, authorId);
+    }
+};
+
+// 文字高亮相关操作
+export const highlightQueries = {
+    create: (postId, userId, lineIndex, startOffset, endOffset, color) => {
+        const db = getDb();
+        const stmt = db.prepare('INSERT INTO highlights (post_id, user_id, line_index, start_offset, end_offset, color) VALUES (?, ?, ?, ?, ?, ?)');
+        return stmt.run(postId, userId, lineIndex, startOffset, endOffset, color);
+    },
+
+    findByPostIdAndUser: (postId, userId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM highlights WHERE post_id = ? AND user_id = ? ORDER BY line_index, start_offset');
+        return stmt.all(postId, userId);
+    },
+
+    findByPostId: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM highlights WHERE post_id = ? ORDER BY line_index, start_offset');
+        return stmt.all(postId);
+    },
+
+    delete: (id, userId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM highlights WHERE id = ? AND user_id = ?');
+        return stmt.run(id, userId);
+    }
+};
+
+// 帖子想法区相关操作
+export const ideaQueries = {
+    get: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT pi.*, u.username as last_editor_name
+            FROM post_ideas pi
+            LEFT JOIN users u ON pi.last_editor_id = u.id
+            WHERE pi.post_id = ?
+        `);
+        return stmt.get(postId);
+    },
+
+    upsert: (postId, content, editorId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO post_ideas (post_id, content, last_editor_id, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(post_id) DO UPDATE SET
+                content = excluded.content,
+                last_editor_id = excluded.last_editor_id,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+        return stmt.run(postId, content, editorId);
     }
 };

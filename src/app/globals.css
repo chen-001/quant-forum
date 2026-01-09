@@ -893,3 +893,456 @@ a:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* 表格编辑器样式 */
+.table-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.table-toolbar {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.editable-table,
+.view-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+.table-cell {
+  position: relative;
+  border: 1px solid var(--border);
+  padding: 0;
+  vertical-align: top;
+  background: var(--bg-secondary);
+  transition: background var(--transition);
+}
+
+.table-cell:hover {
+  background: var(--bg-hover);
+}
+
+.table-cell.editing {
+  background: var(--bg-primary);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.cell-content {
+  padding: var(--spacing-sm);
+  min-height: 30px;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.cell-content .markdown-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.cell-content .markdown-content p {
+  margin: 0;
+}
+
+.cell-content .markdown-content img {
+  max-width: 100%;
+  max-height: 200px;
+}
+
+.cell-placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  padding: var(--spacing-sm);
+  background: var(--bg-primary);
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+}
+
+.cell-input:focus {
+  background: var(--bg-primary);
+}
+
+/* 列宽调整手柄 */
+.col-resize-handle {
+  position: absolute;
+  right: -3px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle:active {
+  background: var(--primary);
+}
+
+/* 行高调整手柄 */
+.row-resize-cell {
+  width: 6px;
+  padding: 0;
+  border: none;
+  position: relative;
+}
+
+.row-resize-handle {
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 100%;
+  height: 6px;
+  cursor: row-resize;
+}
+
+.row-resize-handle:hover,
+.row-resize-handle:active {
+  background: var(--primary);
+}
+
+/* 行列操作按钮 */
+.table-row-actions {
+  width: 30px;
+  padding: var(--spacing-xs);
+  border: none;
+  background: var(--bg-tertiary);
+  vertical-align: middle;
+  text-align: center;
+}
+
+.table-col-actions-cell {
+  width: 0;
+  padding: 0;
+  border: none;
+  position: relative;
+}
+
+.table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.table-action-btn:hover {
+  background: var(--error);
+  color: white;
+}
+
+.table-action-btn.col-delete {
+  position: absolute;
+}
+
+.table-help {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: var(--spacing-sm);
+}
+
+/* 表格查看器 */
+.table-viewer {
+  margin: var(--spacing-md) 0;
+}
+
+.table-viewer .table-cell {
+  cursor: default;
+}
+
+.table-viewer .table-cell:hover {
+  background: var(--bg-secondary);
+}
+
+/* 帖子类型选择器 */
+.post-type-selector {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.post-type-option {
+  flex: 1;
+  padding: var(--spacing-lg);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+}
+
+.post-type-option:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.post-type-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.post-type-icon {
+  font-size: 32px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.post-type-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.post-type-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+/* Interactive Content - 逐行评论和高亮 */
+.interactive-content {
+  position: relative;
+}
+
+.interactive-lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.interactive-line-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.interactive-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+  min-height: 28px;
+  line-height: 1.8;
+}
+
+.interactive-line:hover {
+  background: var(--bg-hover);
+}
+
+.interactive-line.has-comments {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.interactive-line:hover .line-comment-btn {
+  opacity: 1;
+}
+
+.line-content {
+  flex: 1;
+  word-break: break-word;
+}
+
+.line-comment-btn {
+  flex-shrink: 0;
+  opacity: 0;
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.line-comment-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.line-comment-btn.has-comments {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.line-comment-btn.active {
+  opacity: 1;
+  background: var(--primary);
+  color: white;
+}
+
+.comment-count {
+  font-size: 11px;
+  background: var(--primary);
+  color: white;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.line-comment-btn.active .comment-count {
+  background: white;
+  color: var(--primary);
+}
+
+/* Line Comments Panel */
+.line-comments-panel {
+  margin: var(--spacing-sm) 0 var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.line-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.line-comment-item {
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.line-comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.line-comment-author {
+  font-weight: 500;
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.line-comment-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.line-comment-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.line-comment-input {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+}
+
+.line-comment-input textarea {
+  flex: 1;
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  resize: none;
+  font-family: inherit;
+}
+
+.line-comment-input textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.line-comment-login-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--spacing-sm);
+}
+
+/* Highlight Toolbar */
+.highlight-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.highlight-color-btn {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.highlight-color-btn:hover {
+  transform: scale(1.15);
+  border-color: var(--text-primary);
+}

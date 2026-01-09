@@ -13,7 +13,21 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: '帖子不存在' }, { status: 404 });
         }
 
-        const links = postQueries.getLinks(id);
+        // 根据帖子类型获取不同的数据
+        let postData = { ...post };
+
+        if (post.post_type === 'table') {
+            // 表格帖子：获取表格数据
+            const tableData = postQueries.getTableData(id);
+            postData.tableData = tableData?.table_data || [['']];
+            postData.columnWidths = tableData?.column_widths || [];
+            postData.rowHeights = tableData?.row_heights || [];
+        } else {
+            // 链接帖子：获取链接
+            const links = postQueries.getLinks(id);
+            postData.links = links;
+        }
+
         const ratings = ratingQueries.getAverages(id);
 
         // 获取当前用户的评分
@@ -24,7 +38,7 @@ export async function GET(request, { params }) {
         }
 
         return NextResponse.json({
-            post: { ...post, links },
+            post: postData,
             ratings,
             userRating
         });
@@ -55,28 +69,45 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: '只有原作者可以编辑帖子' }, { status: 403 });
         }
 
-        const { title, content, links } = await request.json();
+        const { title, content, links, tableData, columnWidths, rowHeights } = await request.json();
 
         // 更新帖子内容
         postQueries.update(id, title, content);
 
-        // 更新链接：先删除旧的，再添加新的
-        postQueries.deleteLinks(id);
-        if (links && links.length > 0) {
-            links.forEach((link, index) => {
-                if (link.url && link.url.trim()) {
-                    postQueries.addLink(id, link.url, link.title || '', index);
-                }
-            });
+        // 根据帖子类型更新不同的数据
+        if (post.post_type === 'table') {
+            // 更新表格数据
+            if (tableData) {
+                postQueries.updateTableData(id, tableData, columnWidths, rowHeights);
+            }
+        } else {
+            // 更新链接：先删除旧的，再添加新的
+            postQueries.deleteLinks(id);
+            if (links && links.length > 0) {
+                links.forEach((link, index) => {
+                    if (link.url && link.url.trim()) {
+                        postQueries.addLink(id, link.url, link.title || '', index);
+                    }
+                });
+            }
         }
 
         // 获取更新后的帖子
         const updatedPost = postQueries.findById(id);
-        const updatedLinks = postQueries.getLinks(id);
+        let updatedData = { ...updatedPost };
+
+        if (post.post_type === 'table') {
+            const tableDataResult = postQueries.getTableData(id);
+            updatedData.tableData = tableDataResult?.table_data || [['']];
+            updatedData.columnWidths = tableDataResult?.column_widths || [];
+            updatedData.rowHeights = tableDataResult?.row_heights || [];
+        } else {
+            updatedData.links = postQueries.getLinks(id);
+        }
 
         return NextResponse.json({
             message: '帖子更新成功',
-            post: { ...updatedPost, links: updatedLinks }
+            post: updatedData
         });
     } catch (error) {
         console.error('Update post error:', error);

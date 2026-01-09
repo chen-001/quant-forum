@@ -98,6 +98,26 @@ export default function NewPostPage() {
                     ✏️ 发布新帖子
                 </h1>
 
+                {/* 帖子类型选择 */}
+                <div className="post-type-selector">
+                    <div
+                        className="post-type-option selected"
+                        onClick={() => { }}
+                    >
+                        <div className="post-type-icon">🔗</div>
+                        <div className="post-type-label">链接帖子</div>
+                        <div className="post-type-desc">分享AI对话链接</div>
+                    </div>
+                    <div
+                        className="post-type-option"
+                        onClick={() => router.push('/post/new-table')}
+                    >
+                        <div className="post-type-icon">📊</div>
+                        <div className="post-type-label">表格帖子</div>
+                        <div className="post-type-desc">创建可编辑表格</div>
+                    </div>
+                </div>
+
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label className="form-label">帖子标题 *</label>

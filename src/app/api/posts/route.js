@@ -30,26 +30,44 @@ export async function POST(request) {
             return NextResponse.json({ error: '请先登录' }, { status: 401 });
         }
 
-        const { title, content, links } = await request.json();
+        const { title, content, links, postType, tableData, columnWidths, rowHeights } = await request.json();
 
         if (!title || title.trim().length === 0) {
             return NextResponse.json({ error: '标题不能为空' }, { status: 400 });
         }
 
-        if (!links || links.length === 0) {
-            return NextResponse.json({ error: '请至少添加一个AI链接' }, { status: 400 });
-        }
+        let postId;
 
-        // 创建帖子
-        const result = postQueries.create(title.trim(), content || '', session.user.id);
-        const postId = result.lastInsertRowid;
-
-        // 添加链接
-        links.forEach((link, index) => {
-            if (link.url && link.url.trim()) {
-                postQueries.addLink(postId, link.url.trim(), link.title || '', index);
+        if (postType === 'table') {
+            // 创建表格帖子
+            if (!tableData || tableData.length === 0) {
+                return NextResponse.json({ error: '表格数据不能为空' }, { status: 400 });
             }
-        });
+            const result = postQueries.createTablePost(
+                title.trim(),
+                content || '',
+                session.user.id,
+                tableData,
+                columnWidths,
+                rowHeights
+            );
+            postId = result.lastInsertRowid;
+        } else {
+            // 创建链接帖子（原有逻辑）
+            if (!links || links.length === 0) {
+                return NextResponse.json({ error: '请至少添加一个AI链接' }, { status: 400 });
+            }
+
+            const result = postQueries.create(title.trim(), content || '', session.user.id);
+            postId = result.lastInsertRowid;
+
+            // 添加链接
+            links.forEach((link, index) => {
+                if (link.url && link.url.trim()) {
+                    postQueries.addLink(postId, link.url.trim(), link.title || '', index);
+                }
+            });
+        }
 
         return NextResponse.json({
             message: '发帖成功',
