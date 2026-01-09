@@ -1,11 +1,19 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 let db = null;
 
 export function getDb() {
     if (!db) {
-        const dbPath = path.join(process.cwd(), 'data', 'forum.db');
+        // Use import.meta.url to get the current file's path and resolve data/forum.db relative to it
+        // src/lib/db.js -> ../../data/forum.db
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const dbPath = path.join(__dirname, '../../data/forum.db');
+
+        console.log('Database path:', dbPath);
+
         db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
