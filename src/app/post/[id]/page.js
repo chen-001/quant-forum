@@ -255,12 +255,35 @@ export default function PostDetailPage({ params }) {
                             {post.title}
                         </h1>
                         {user && user.id === post.author_id && (
-                            <a
-                                href={`/post/${id}/edit`}
-                                className="btn btn-secondary btn-sm"
-                            >
-                                ✏️ 编辑帖子
-                            </a>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <a
+                                    href={`/post/${id}/edit`}
+                                    className="btn btn-secondary btn-sm"
+                                >
+                                    ✏️ 编辑帖子
+                                </a>
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: 'var(--error)', color: 'white' }}
+                                    onClick={async () => {
+                                        if (confirm('确定要删除这篇帖子吗？此操作无法撤销。')) {
+                                            try {
+                                                const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+                                                if (res.ok) {
+                                                    router.push('/');
+                                                } else {
+                                                    const data = await res.json();
+                                                    alert(data.error || '删除失败');
+                                                }
+                                            } catch (error) {
+                                                alert('删除失败，请重试');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    🗑️ 删除帖子
+                                </button>
+                            </div>
                         )}
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
@@ -423,7 +446,7 @@ export default function PostDetailPage({ params }) {
 
                     {/* 想法讨论区（侧边栏） */}
                     <div className="post-sidebar">
-                        <div className="discussion-section" style={{ minHeight: '500px' }}>
+                        <div className="discussion-section">
                             <div className="discussion-header">
                                 💬 想法讨论区 ({comments.length})
                             </div>

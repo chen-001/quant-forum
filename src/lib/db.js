@@ -109,6 +109,18 @@ export const postQueries = {
         const db = getDb();
         const stmt = db.prepare('DELETE FROM post_links WHERE post_id = ?');
         return stmt.run(postId);
+    },
+
+    delete: (postId) => {
+        const db = getDb();
+        // 由于外键约束，需要先删除关联数据
+        db.prepare('DELETE FROM post_links WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM comment_reactions WHERE comment_id IN (SELECT id FROM comments WHERE post_id = ?)').run(postId);
+        db.prepare('DELETE FROM comments WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM ratings WHERE post_id = ?').run(postId);
+        db.prepare('DELETE FROM results WHERE post_id = ?').run(postId);
+        const stmt = db.prepare('DELETE FROM posts WHERE id = ?');
+        return stmt.run(postId);
     }
 };
 

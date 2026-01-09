@@ -83,3 +83,33 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ error: '更新帖子失败' }, { status: 500 });
     }
 }
+
+// 删除帖子 - 仅原作者可删除
+export async function DELETE(request, { params }) {
+    try {
+        const session = await getSessionFromCookies(await cookies());
+
+        if (!session.user) {
+            return NextResponse.json({ error: '请先登录' }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const post = postQueries.findById(id);
+
+        if (!post) {
+            return NextResponse.json({ error: '帖子不存在' }, { status: 404 });
+        }
+
+        // 检查是否是原作者
+        if (post.author_id !== session.user.id) {
+            return NextResponse.json({ error: '只有原作者可以删除帖子' }, { status: 403 });
+        }
+
+        postQueries.delete(id);
+
+        return NextResponse.json({ message: '帖子已删除' });
+    } catch (error) {
+        console.error('Delete post error:', error);
+        return NextResponse.json({ error: '删除帖子失败' }, { status: 500 });
+    }
+}
