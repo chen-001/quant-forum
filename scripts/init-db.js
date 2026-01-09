@@ -29,12 +29,24 @@ db.exec(`
   );
 `);
 
-// 为现有表添加 post_type 列（如果不存在）
-try {
-  db.exec(`ALTER TABLE posts ADD COLUMN post_type TEXT DEFAULT 'link' CHECK(post_type IN ('link', 'table'))`);
-} catch (e) {
-  // 列已存在，忽略错误
-}
+// 检查并添加缺失的列
+const addColumnIfNotExists = (table, column, definition) => {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`Added column ${column} to table ${table}`);
+  } catch (e) {
+    // 列已存在，忽略错误
+  }
+};
+
+// 迁移：为 posts 表添加列
+addColumnIfNotExists('posts', 'post_type', "TEXT DEFAULT 'link' CHECK(post_type IN ('link', 'table'))");
+addColumnIfNotExists('posts', 'is_pinned', "INTEGER DEFAULT 0");
+addColumnIfNotExists('posts', 'updated_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
+
+// 迁移：为 comments 表添加列
+addColumnIfNotExists('comments', 'likes_count', "INTEGER DEFAULT 0");
+addColumnIfNotExists('comments', 'doubts_count', "INTEGER DEFAULT 0");
 
 // 创建表格帖子数据表
 db.exec(`
