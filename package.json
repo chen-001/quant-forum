@@ -1,0 +1,23 @@
+{
+  "name": "quant-forum",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5203",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.5.0",
+    "highlight.js": "^11.11.1",
+    "iron-session": "^8.0.4",
+    "katex": "^0.16.27",
+    "marked": "^17.0.1",
+    "multer": "^2.0.2",
+    "next": "16.1.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "uuid": "^13.0.0"
+  }
+}

@@ -1,0 +1,62 @@
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getSessionFromCookies } from '@/lib/session';
+import { postQueries } from '@/lib/db';
+
+// 获取帖子列表
+export async function GET(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const orderBy = searchParams.get('orderBy') || 'created_at';
+        const order = searchParams.get('order') || 'DESC';
+        const limit = parseInt(searchParams.get('limit')) || 50;
+        const offset = parseInt(searchParams.get('offset')) || 0;
+
+        const posts = postQueries.list(orderBy, order, limit, offset);
+
+        return NextResponse.json({ posts });
+    } catch (error) {
+        console.error('Get posts error:', error);
+        return NextResponse.json({ error: '获取帖子列表失败' }, { status: 500 });
+    }
+}
+
+// 创建新帖子
+export async function POST(request) {
+    try {
+        const session = await getSessionFromCookies(await cookies());
+
+        if (!session.user) {
+            return NextResponse.json({ error: '请先登录' }, { status: 401 });
+        }
+
+        const { title, content, links } = await request.json();
+
+        if (!title || title.trim().length === 0) {
+            return NextResponse.json({ error: '标题不能为空' }, { status: 400 });
+        }
+
+        if (!links || links.length === 0) {
+            return NextResponse.json({ error: '请至少添加一个AI链接' }, { status: 400 });
+        }
+
+        // 创建帖子
+        const result = postQueries.create(title.trim(), content || '', session.user.id);
+        const postId = result.lastInsertRowid;
+
+        // 添加链接
+        links.forEach((link, index) => {
+            if (link.url && link.url.trim()) {
+                postQueries.addLink(postId, link.url.trim(), link.title || '', index);
+            }
+        });
+
+        return NextResponse.json({
+            message: '发帖成功',
+            postId
+        });
+    } catch (error) {
+        console.error('Create post error:', error);
+        return NextResponse.json({ error: '发帖失败，请稍后重试' }, { status: 500 });
+    }
+}
