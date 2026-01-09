@@ -1,9 +1,76 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
+
+/**
+ * 识别内容中的代码块
+ * @returns Array<{type: 'code'|'text', startLine: number, endLine: number, content: string}>
+ */
+function parseCodeBlocks(content) {
+    const lines = content.split('\n');
+    const blocks = [];
+    let currentBlock = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const isFenceStart = /^```|~~~/.test(line);
+        const isFenceEnd = currentBlock?.type === 'code' && /^```|~~~/.test(line);
+        const isIndented = /^(\t|    )/.test(line);
+
+        if (isFenceStart && !currentBlock) {
+            // 代码块开始
+            currentBlock = {
+                type: 'code',
+                startLine: i,
+                content: [line]
+            };
+        } else if (isFenceEnd && currentBlock?.type === 'code') {
+            // 代码块结束
+            currentBlock.endLine = i;
+            currentBlock.content.push(line);
+            blocks.push(currentBlock);
+            currentBlock = null;
+        } else if (currentBlock?.type === 'code') {
+            // 代码块内容
+            currentBlock.content.push(line);
+        } else if (isIndented && !currentBlock) {
+            // 缩进代码块（简化处理，连续缩进行）
+            currentBlock = {
+                type: 'code',
+                startLine: i,
+                content: [line]
+            };
+            let j = i + 1;
+            while (j < lines.length && /^(\t|    )/.test(lines[j])) {
+                currentBlock.content.push(lines[j]);
+                j++;
+            }
+            currentBlock.endLine = j - 1;
+            blocks.push(currentBlock);
+            currentBlock = null;
+            i = j - 1;
+        } else if (!currentBlock) {
+            // 普通文本行
+            blocks.push({
+                type: 'text',
+                startLine: i,
+                endLine: i,
+                content: [line]
+            });
+        }
+    }
+
+    // 处理未闭合的代码块
+    if (currentBlock?.type === 'code') {
+        currentBlock.endLine = lines.length - 1;
+        blocks.push(currentBlock);
+    }
+
+    return blocks;
+}
 
 // 配置 marked
 marked.setOptions({
@@ -61,6 +128,12 @@ export default function InteractiveContent({ content, postId, user }) {
 
     // 将内容分行处理
     const lines = content ? content.split('\n') : [];
+
+    // 解析代码块
+    const blocks = useMemo(() => {
+        if (!content) return [];
+        return parseCodeBlocks(content);
+    }, [content]);
 
     useEffect(() => {
         fetchLineComments();
@@ -265,6 +338,164 @@ export default function InteractiveContent({ content, postId, user }) {
         setDeleteConfirm({ show: false, highlightId: null });
     };
 
+    // 渲染单行文本
+    const renderLine = (line, index) => {
+        const lineHighlights = highlights[index] || [];
+        const lineCommentsArr = lineComments[index] || [];
+        const hasComments = lineCommentsArr.length > 0;
+        const isActiveComment = activeCommentLine === index;
+
+        let renderedLine = line ? marked.parseInline(line) : '&nbsp;';
+        renderedLine = renderLatex(renderedLine);
+
+        if (lineHighlights.length > 0) {
+            renderedLine = applyHighlights(line, lineHighlights);
+            renderedLine = marked.parseInline(renderedLine);
+            renderedLine = renderLatex(renderedLine);
+        }
+
+        return (
+            <div key={index} className="interactive-line-wrapper">
+                <div
+                    className={`interactive-line ${hasComments ? 'has-comments' : ''}`}
+                    data-line-index={index}
+                    onMouseUp={() => handleTextSelection(index)}
+                >
+                    <span
+                        className="line-content"
+                        dangerouslySetInnerHTML={{ __html: renderedLine }}
+                    />
+                    <button
+                        className={`line-comment-btn ${hasComments ? 'has-comments' : ''} ${isActiveComment ? 'active' : ''}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCommentLine(isActiveComment ? null : index);
+                        }}
+                        title={hasComments ? `${lineCommentsArr.length} 条评论` : '添加评论'}
+                    >
+                        💬 {hasComments && <span className="comment-count">{lineCommentsArr.length}</span>}
+                    </button>
+                </div>
+
+                {isActiveComment && (
+                    <div className="line-comments-panel">
+                        {lineCommentsArr.length > 0 && (
+                            <div className="line-comments-list">
+                                {lineCommentsArr.map(comment => (
+                                    <div key={comment.id} className="line-comment-item">
+                                        <div className="line-comment-header">
+                                            <span className="line-comment-author">{comment.author_name}</span>
+                                            <span className="line-comment-time">{formatDate(comment.created_at)}</span>
+                                        </div>
+                                        <div className="line-comment-content">{comment.content}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {user ? (
+                            <div className="line-comment-input">
+                                <textarea
+                                    value={newCommentContent}
+                                    onChange={(e) => setNewCommentContent(e.target.value)}
+                                    placeholder="写下你对这行的评论..."
+                                    rows={2}
+                                />
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={handleAddComment}
+                                    disabled={!newCommentContent.trim()}
+                                >
+                                    发送
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="line-comment-login-hint">
+                                <a href="/login">登录</a> 后可添加评论
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // 渲染代码块
+    const renderCodeBlock = (block, blockIndex) => {
+        const blockContent = block.content.join('\n');
+        const lineCommentsArr = lineComments[block.startLine] || [];
+        const hasComments = lineCommentsArr.length > 0;
+        const isActiveComment = activeCommentLine === block.startLine;
+
+        // 使用完整渲染
+        let renderedBlock = marked.parse(blockContent);
+        // 代码块内不渲染 LaTeX，避免误处理代码中的 $ 符号
+
+        return (
+            <div key={`block-${blockIndex}`} className="interactive-line-wrapper code-block-wrapper">
+                <div
+                    className={`interactive-line code-block-line ${hasComments ? 'has-comments' : ''}`}
+                    data-line-index={block.startLine}
+                >
+                    <div
+                        className="line-content code-block-content"
+                        dangerouslySetInnerHTML={{ __html: renderedBlock }}
+                    />
+                    <button
+                        className={`line-comment-btn ${hasComments ? 'has-comments' : ''} ${isActiveComment ? 'active' : ''}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCommentLine(isActiveComment ? null : block.startLine);
+                        }}
+                        title={hasComments ? `${lineCommentsArr.length} 条评论` : '添加评论'}
+                    >
+                        💬 {hasComments && <span className="comment-count">{lineCommentsArr.length}</span>}
+                    </button>
+                </div>
+
+                {isActiveComment && (
+                    <div className="line-comments-panel">
+                        {lineCommentsArr.length > 0 && (
+                            <div className="line-comments-list">
+                                {lineCommentsArr.map(comment => (
+                                    <div key={comment.id} className="line-comment-item">
+                                        <div className="line-comment-header">
+                                            <span className="line-comment-author">{comment.author_name}</span>
+                                            <span className="line-comment-time">{formatDate(comment.created_at)}</span>
+                                        </div>
+                                        <div className="line-comment-content">{comment.content}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {user ? (
+                            <div className="line-comment-input">
+                                <textarea
+                                    value={newCommentContent}
+                                    onChange={(e) => setNewCommentContent(e.target.value)}
+                                    placeholder="写下你对代码块的评论..."
+                                    rows={2}
+                                />
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={handleAddComment}
+                                    disabled={!newCommentContent.trim()}
+                                >
+                                    发送
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="line-comment-login-hint">
+                                <a href="/login">登录</a> 后可添加评论
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="interactive-content" ref={contentRef}>
             {/* 高亮颜色选择工具栏 */}
@@ -343,88 +574,17 @@ export default function InteractiveContent({ content, postId, user }) {
 
             {/* 逐行渲染内容 */}
             <div className="interactive-lines" onClick={handleContentClick}>
-                {lines.map((line, index) => {
-                    const lineHighlights = highlights[index] || [];
-                    const lineCommentsArr = lineComments[index] || [];
-                    const hasComments = lineCommentsArr.length > 0;
-                    const isActiveComment = activeCommentLine === index;
-
-                    // 渲染单行 Markdown
-                    let renderedLine = line ? marked.parseInline(line) : '&nbsp;';
-                    renderedLine = renderLatex(renderedLine);
-
-                    // 应用高亮（在纯文本上）
-                    if (lineHighlights.length > 0) {
-                        renderedLine = applyHighlights(line, lineHighlights);
-                        renderedLine = marked.parseInline(renderedLine);
-                        renderedLine = renderLatex(renderedLine);
+                {blocks.map((block, blockIndex) => {
+                    if (block.type === 'code') {
+                        // 渲染代码块
+                        return renderCodeBlock(block, blockIndex);
+                    } else {
+                        // 渲染文本行
+                        return block.content.map((line, lineIndex) => {
+                            const actualLineIndex = block.startLine + lineIndex;
+                            return renderLine(line, actualLineIndex);
+                        });
                     }
-
-                    return (
-                        <div key={index} className="interactive-line-wrapper">
-                            <div
-                                className={`interactive-line ${hasComments ? 'has-comments' : ''}`}
-                                data-line-index={index}
-                                onMouseUp={() => handleTextSelection(index)}
-                            >
-                                <span
-                                    className="line-content"
-                                    dangerouslySetInnerHTML={{ __html: renderedLine }}
-                                />
-                                <button
-                                    className={`line-comment-btn ${hasComments ? 'has-comments' : ''} ${isActiveComment ? 'active' : ''}`}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveCommentLine(isActiveComment ? null : index);
-                                    }}
-                                    title={hasComments ? `${lineCommentsArr.length} 条评论` : '添加评论'}
-                                >
-                                    💬 {hasComments && <span className="comment-count">{lineCommentsArr.length}</span>}
-                                </button>
-                            </div>
-
-                            {/* 展开的评论区 */}
-                            {isActiveComment && (
-                                <div className="line-comments-panel">
-                                    {lineCommentsArr.length > 0 && (
-                                        <div className="line-comments-list">
-                                            {lineCommentsArr.map(comment => (
-                                                <div key={comment.id} className="line-comment-item">
-                                                    <div className="line-comment-header">
-                                                        <span className="line-comment-author">{comment.author_name}</span>
-                                                        <span className="line-comment-time">{formatDate(comment.created_at)}</span>
-                                                    </div>
-                                                    <div className="line-comment-content">{comment.content}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {user ? (
-                                        <div className="line-comment-input">
-                                            <textarea
-                                                value={newCommentContent}
-                                                onChange={(e) => setNewCommentContent(e.target.value)}
-                                                placeholder="写下你对这行的评论..."
-                                                rows={2}
-                                            />
-                                            <button
-                                                className="btn btn-primary btn-sm"
-                                                onClick={handleAddComment}
-                                                disabled={!newCommentContent.trim()}
-                                            >
-                                                发送
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="line-comment-login-hint">
-                                            <a href="/login">登录</a> 后可添加评论
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    );
                 })}
             </div>
         </div>

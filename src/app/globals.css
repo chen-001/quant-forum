@@ -1346,3 +1346,39 @@ a:hover {
   transform: scale(1.15);
   border-color: var(--text-primary);
 }
+
+/* 代码块特殊样式 */
+.code-block-wrapper {
+    margin: var(--spacing-md) 0;
+}
+
+.code-block-line {
+    display: block;
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.code-block-content {
+    display: block;
+}
+
+.code-block-content pre {
+    margin: 0;
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.code-block-content code {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* 代码块内禁用选中文本高亮功能 */
+.code-block-line .line-content {
+    pointer-events: none;
+}
