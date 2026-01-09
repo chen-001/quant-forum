@@ -97,6 +97,18 @@ export const postQueries = {
         const db = getDb();
         const stmt = db.prepare('UPDATE posts SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
         return stmt.run(id);
+    },
+
+    update: (id, title, content) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE posts SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+        return stmt.run(title, content, id);
+    },
+
+    deleteLinks: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM post_links WHERE post_id = ?');
+        return stmt.run(postId);
     }
 };
 
@@ -209,8 +221,15 @@ export const ratingQueries = {
         fun = excluded.fun,
         completeness = excluded.completeness
     `);
-        return stmt.run(postId, userId, ratings.novelty, ratings.test_effect,
-            ratings.extensibility, ratings.creativity, ratings.fun, ratings.completeness);
+        // 将0值转换为null，这样不会影响平均值计算
+        const toNullIfZero = (v) => (v && v > 0) ? v : null;
+        return stmt.run(postId, userId,
+            toNullIfZero(ratings.novelty),
+            toNullIfZero(ratings.test_effect),
+            toNullIfZero(ratings.extensibility),
+            toNullIfZero(ratings.creativity),
+            toNullIfZero(ratings.fun),
+            toNullIfZero(ratings.completeness));
     },
 
     getAverages: (postId) => {

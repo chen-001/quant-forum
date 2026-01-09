@@ -49,10 +49,10 @@ export default function RatingPanel({ postId, averages, userRating, onUpdate }) 
     };
 
     const handleSubmit = async () => {
-        // 验证所有评分都已填写
-        const allFilled = Object.values(ratings).every(v => v > 0);
-        if (!allFilled) {
-            setMessage('请完成所有评分项');
+        // 验证至少有一个评分已填写
+        const filledCount = Object.values(ratings).filter(v => v > 0).length;
+        if (filledCount === 0) {
+            setMessage('请至少完成一项评分');
             return;
         }
 

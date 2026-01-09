@@ -224,7 +224,7 @@ a:hover {
 
 /* 容器 */
 .container {
-  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   padding: var(--spacing-lg) var(--spacing-xl);
 }
@@ -342,15 +342,17 @@ a:hover {
 /* 帖子详情页 */
 .post-detail {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  grid-template-columns: 70% 30%;
   gap: var(--spacing-lg);
   min-height: calc(100vh - 80px);
+  width: 100%;
 }
 
 .post-main {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  min-width: 0;
 }
 
 .post-sidebar {
@@ -359,6 +361,7 @@ a:hover {
   height: fit-content;
   max-height: calc(100vh - 100px);
   overflow-y: auto;
+  min-width: 0;
 }
 
 /* 网页预览区 */
@@ -426,15 +429,21 @@ a:hover {
 
 .preview-frames {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1px;
   background: var(--border);
-  min-height: 500px;
+  min-height: calc(100vh - 300px);
+}
+
+.preview-frames.multi-frame {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .preview-frame {
   position: relative;
   background: white;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-frame-header {
@@ -444,6 +453,7 @@ a:hover {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .preview-frame-url {
@@ -452,12 +462,13 @@ a:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  max-width: 300px;
 }
 
 .preview-iframe {
   width: 100%;
-  height: 500px;
+  flex: 1;
+  min-height: calc(100vh - 350px);
   border: none;
 }
 
@@ -466,7 +477,8 @@ a:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 500px;
+  flex: 1;
+  min-height: calc(100vh - 350px);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   text-align: center;

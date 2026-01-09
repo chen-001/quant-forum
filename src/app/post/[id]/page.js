@@ -250,9 +250,19 @@ export default function PostDetailPage({ params }) {
             <main className="container">
                 {/* 帖子标题 */}
                 <div style={{ marginBottom: '24px' }}>
-                    <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>
-                        {post.title}
-                    </h1>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                            {post.title}
+                        </h1>
+                        {user && user.id === post.author_id && (
+                            <a
+                                href={`/post/${id}/edit`}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                ✏️ 编辑帖子
+                            </a>
+                        )}
+                    </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
                         👤 {post.author_name} · 📅 {formatDate(post.created_at)}
                     </div>
@@ -303,12 +313,7 @@ export default function PostDetailPage({ params }) {
 
                             {/* iframe预览 */}
                             {openLinks.length > 0 ? (
-                                <div className="preview-frames" style={{
-                                    gridTemplateColumns: openLinks.length === 1 ? '1fr' :
-                                        openLinks.length === 2 ? 'repeat(2, 1fr)' :
-                                            openLinks.length === 3 ? 'repeat(3, 1fr)' :
-                                                'repeat(4, 1fr)'
-                                }}>
+                                <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
                                     {openLinks.map((link) => (
                                         <div key={link.id} className="preview-frame">
                                             <div className="preview-frame-header">

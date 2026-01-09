@@ -35,12 +35,20 @@ export async function POST(request, { params }) {
         const { id } = await params;
         const ratings = await request.json();
 
-        // 验证评分值
+        // 验证评分值 - 允许部分评分，填写的值必须在1-5之间
         const ratingFields = ['novelty', 'test_effect', 'extensibility', 'creativity', 'fun', 'completeness'];
+        let hasAtLeastOne = false;
         for (const field of ratingFields) {
-            if (!ratings[field] || ratings[field] < 1 || ratings[field] > 5) {
-                return NextResponse.json({ error: '评分值必须在1-5之间' }, { status: 400 });
+            const value = ratings[field] || 0;
+            if (value > 0) {
+                hasAtLeastOne = true;
+                if (value < 1 || value > 5) {
+                    return NextResponse.json({ error: '评分值必须在1-5之间' }, { status: 400 });
+                }
             }
+        }
+        if (!hasAtLeastOne) {
+            return NextResponse.json({ error: '请至少完成一项评分' }, { status: 400 });
         }
 
         ratingQueries.upsert(id, session.user.id, ratings);
