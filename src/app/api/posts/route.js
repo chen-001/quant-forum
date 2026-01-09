@@ -12,9 +12,17 @@ export async function GET(request) {
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = parseInt(searchParams.get('offset')) || 0;
 
-        const posts = postQueries.list(orderBy, order, limit, offset);
+        console.log('API: Fetching posts with params:', { orderBy, order, limit, offset });
+        console.log('API: CWD:', process.cwd());
 
-        return NextResponse.json({ posts });
+        try {
+            const posts = postQueries.list(orderBy, order, limit, offset);
+            console.log('API: Found posts count:', posts.length);
+            return NextResponse.json({ posts });
+        } catch (dbError) {
+            console.error('API: Database query error:', dbError);
+            throw dbError;
+        }
     } catch (error) {
         console.error('Get posts error:', error);
         return NextResponse.json({ error: '获取帖子列表失败' }, { status: 500 });
