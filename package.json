@@ -2,10 +2,16 @@
   "name": "quant-forum",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 5203",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "electron:build": "electron-builder",
+    "electron:build:mac": "electron-builder --mac",
+    "electron:build:win": "electron-builder --win"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -19,5 +25,38 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.quantforum.desktop",
+    "productName": "Quant Forum",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "electron/icons/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "electron/icons/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

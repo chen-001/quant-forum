@@ -33,8 +33,16 @@ export default function PostDetailPage({ params }) {
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editCommentContent, setEditCommentContent] = useState('');
     const [commentFilter, setCommentFilter] = useState('');
+    const [isElectron, setIsElectron] = useState(false);
     const saveTimeoutRef = useRef(null);
     const router = useRouter();
+
+    // 检测 Electron 环境
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+            setIsElectron(true);
+        }
+    }, []);
 
     // 防抖保存表格数据
     const saveTableData = useCallback(async (data) => {
@@ -637,20 +645,33 @@ export default function PostDetailPage({ params }) {
                                                             {link.title || link.url}
                                                         </span>
                                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                            <button
-                                                                className={`btn btn-sm ${useProxy ? 'btn-primary' : 'btn-ghost'}`}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setOpenLinks(prev => prev.map(l =>
-                                                                        l.id === link.id
-                                                                            ? { ...l, useProxy: !l.useProxy }
-                                                                            : l
-                                                                    ));
-                                                                }}
-                                                                title={useProxy ? '当前使用代理模式' : '点击切换到代理模式'}
-                                                            >
-                                                                {useProxy ? '🔄 代理模式' : '⚡ 直连模式'}
-                                                            </button>
+                                                            {isElectron && (
+                                                                <span style={{
+                                                                    fontSize: '12px',
+                                                                    color: 'var(--success)',
+                                                                    background: 'rgba(16, 185, 129, 0.1)',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '4px'
+                                                                }}>
+                                                                    🖥️ 桌面模式
+                                                                </span>
+                                                            )}
+                                                            {!isElectron && (
+                                                                <button
+                                                                    className={`btn btn-sm ${useProxy ? 'btn-primary' : 'btn-ghost'}`}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setOpenLinks(prev => prev.map(l =>
+                                                                            l.id === link.id
+                                                                                ? { ...l, useProxy: !l.useProxy }
+                                                                                : l
+                                                                        ));
+                                                                    }}
+                                                                    title={useProxy ? '当前使用代理模式' : '点击切换到代理模式'}
+                                                                >
+                                                                    {useProxy ? '🔄 代理模式' : '⚡ 直连模式'}
+                                                                </button>
+                                                            )}
                                                             <a
                                                                 href={link.url}
                                                                 target="_blank"
@@ -662,31 +683,43 @@ export default function PostDetailPage({ params }) {
                                                             </a>
                                                         </div>
                                                     </div>
-                                                    <iframe
-                                                        key={`${link.id}-${useProxy}`}
-                                                        src={iframeSrc}
-                                                        className="preview-iframe"
-                                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
-                                                        onError={(e) => {
-                                                            e.target.style.display = 'none';
-                                                            e.target.nextSibling.style.display = 'flex';
-                                                        }}
-                                                    />
-                                                    <div className="preview-blocked" style={{ display: 'none' }}>
-                                                        <p>⚠️ 该网站禁止嵌入显示</p>
-                                                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                                            可尝试点击上方"代理模式"按钮
-                                                        </p>
-                                                        <a
-                                                            href={link.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="btn btn-primary"
-                                                            style={{ marginTop: '16px' }}
-                                                        >
-                                                            在新窗口打开
-                                                        </a>
-                                                    </div>
+                                                    {isElectron ? (
+                                                        /* Electron 环境使用 webview，可加载任何网页 */
+                                                        <webview
+                                                            src={link.url}
+                                                            className="preview-iframe"
+                                                            style={{ width: '100%', height: '100%', border: 'none' }}
+                                                        />
+                                                    ) : (
+                                                        /* 浏览器环境使用 iframe */
+                                                        <iframe
+                                                            key={`${link.id}-${useProxy}`}
+                                                            src={iframeSrc}
+                                                            className="preview-iframe"
+                                                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                                e.target.nextSibling.style.display = 'flex';
+                                                            }}
+                                                        />
+                                                    )}
+                                                    {!isElectron && (
+                                                        <div className="preview-blocked" style={{ display: 'none' }}>
+                                                            <p>⚠️ 该网站禁止嵌入显示</p>
+                                                            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                                                使用桌面客户端可打开任何网页
+                                                            </p>
+                                                            <a
+                                                                href={link.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-primary"
+                                                                style={{ marginTop: '16px' }}
+                                                            >
+                                                                在新窗口打开
+                                                            </a>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}

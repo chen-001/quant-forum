@@ -7,7 +7,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: resolve db path correctly in ESM modules using import.meta.url\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git diff:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add Electron desktop app support\n\n- Add electron main process and preload scripts\n- Add electron build scripts and configuration\n- Detect Electron environment in post detail page\n- Update dependencies with electron and electron-builder\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
