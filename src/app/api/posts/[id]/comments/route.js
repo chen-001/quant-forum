@@ -78,3 +78,78 @@ export async function PATCH(request, { params }) {
         return NextResponse.json({ error: '操作失败' }, { status: 500 });
     }
 }
+
+// 编辑评论
+export async function PUT(request, { params }) {
+    try {
+        const session = await getSessionFromCookies(await cookies());
+
+        if (!session.user) {
+            return NextResponse.json({ error: '请先登录' }, { status: 401 });
+        }
+
+        const { commentId, content } = await request.json();
+
+        if (!content || content.trim().length === 0) {
+            return NextResponse.json({ error: '评论内容不能为空' }, { status: 400 });
+        }
+
+        // Verify the comment exists and belongs to the user
+        const comment = commentQueries.findById(commentId);
+        if (!comment) {
+            return NextResponse.json({ error: '评论不存在' }, { status: 404 });
+        }
+        if (comment.author_id !== session.user.id) {
+            return NextResponse.json({ error: '只能编辑自己的评论' }, { status: 403 });
+        }
+
+        const result = commentQueries.update(commentId, session.user.id, content.trim());
+
+        if (result.changes === 0) {
+            return NextResponse.json({ error: '编辑失败' }, { status: 500 });
+        }
+
+        return NextResponse.json({ message: '编辑成功' });
+    } catch (error) {
+        console.error('Edit comment error:', error);
+        return NextResponse.json({ error: '编辑失败' }, { status: 500 });
+    }
+}
+
+// 删除评论
+export async function DELETE(request, { params }) {
+    try {
+        const session = await getSessionFromCookies(await cookies());
+
+        if (!session.user) {
+            return NextResponse.json({ error: '请先登录' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const commentId = searchParams.get('commentId');
+
+        if (!commentId) {
+            return NextResponse.json({ error: '缺少评论ID' }, { status: 400 });
+        }
+
+        // Verify the comment exists and belongs to the user
+        const comment = commentQueries.findById(commentId);
+        if (!comment) {
+            return NextResponse.json({ error: '评论不存在' }, { status: 404 });
+        }
+        if (comment.author_id !== session.user.id) {
+            return NextResponse.json({ error: '只能删除自己的评论' }, { status: 403 });
+        }
+
+        const result = commentQueries.delete(commentId, session.user.id);
+
+        if (result.changes === 0) {
+            return NextResponse.json({ error: '删除失败' }, { status: 500 });
+        }
+
+        return NextResponse.json({ message: '删除成功' });
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        return NextResponse.json({ error: '删除失败' }, { status: 500 });
+    }
+}

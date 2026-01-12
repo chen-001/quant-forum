@@ -30,6 +30,9 @@ export default function PostDetailPage({ params }) {
     const [ideasEditing, setIdeasEditing] = useState(false);
     const [ideasSaving, setIdeasSaving] = useState(false);
     const [ideasLastEditor, setIdeasLastEditor] = useState(null);
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editCommentContent, setEditCommentContent] = useState('');
+    const [commentFilter, setCommentFilter] = useState('');
     const saveTimeoutRef = useRef(null);
     const router = useRouter();
 
@@ -240,6 +243,53 @@ export default function PostDetailPage({ params }) {
         }
     };
 
+    const handleCommentEdit = async (commentId) => {
+        if (!editCommentContent.trim()) return;
+
+        try {
+            const res = await fetch(`/api/posts/${id}/comments`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    commentId,
+                    content: editCommentContent
+                })
+            });
+
+            if (res.ok) {
+                setEditingCommentId(null);
+                setEditCommentContent('');
+                fetchComments();
+            } else {
+                const data = await res.json();
+                alert(data.error || '编辑失败');
+            }
+        } catch (error) {
+            console.error('Failed to edit comment:', error);
+            alert('编辑失败，请重试');
+        }
+    };
+
+    const handleCommentDelete = async (commentId) => {
+        if (!confirm('确定要删除这条评论吗？')) return;
+
+        try {
+            const res = await fetch(`/api/posts/${id}/comments?commentId=${commentId}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                fetchComments();
+            } else {
+                const data = await res.json();
+                alert(data.error || '删除失败');
+            }
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+            alert('删除失败，请重试');
+        }
+    };
+
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('zh-CN', {
@@ -293,15 +343,68 @@ export default function PostDetailPage({ params }) {
 
     const commentTree = buildCommentTree(comments);
 
+    // Filter comments recursively
+    const filterComments = (tree, filter) => {
+        if (!filter.trim()) return tree;
+        const lowerFilter = filter.toLowerCase();
+
+        const matches = (comment) => {
+            return comment.author_name.toLowerCase().includes(lowerFilter) ||
+                comment.content.toLowerCase().includes(lowerFilter);
+        };
+
+        const filterRecursive = (comments) => {
+            return comments
+                .map(c => ({
+                    ...c,
+                    replies: filterRecursive(c.replies || [])
+                }))
+                .filter(c => matches(c) || c.replies.length > 0);
+        };
+
+        return filterRecursive(tree);
+    };
+
+    const filteredCommentTree = filterComments(commentTree, commentFilter);
+
     const renderComment = (comment, depth = 0) => (
         <div key={comment.id} className={`comment-item ${depth > 0 ? 'reply' : ''}`}>
             <div className="comment-header">
                 <span className="comment-author">{comment.author_name}</span>
                 <span className="comment-time">{formatDate(comment.created_at)}</span>
             </div>
-            <div className="comment-content">
-                <MarkdownRenderer content={comment.content} />
-            </div>
+            {editingCommentId === comment.id ? (
+                <div style={{ marginBottom: '8px' }}>
+                    <MarkdownEditor
+                        value={editCommentContent}
+                        onChange={setEditCommentContent}
+                        placeholder="编辑评论..."
+                        minHeight={80}
+                    />
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleCommentEdit(comment.id)}
+                            disabled={!editCommentContent.trim()}
+                        >
+                            保存
+                        </button>
+                        <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                                setEditingCommentId(null);
+                                setEditCommentContent('');
+                            }}
+                        >
+                            取消
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="comment-content">
+                    <MarkdownRenderer content={comment.content} />
+                </div>
+            )}
             <div className="comment-actions">
                 <button
                     className={`comment-action ${userReactions.some(r => r.comment_id === comment.id && r.reaction_type === 'like') ? 'active' : ''}`}
@@ -322,6 +425,26 @@ export default function PostDetailPage({ params }) {
                     >
                         💬 回复
                     </button>
+                )}
+                {user && user.id === comment.author_id && editingCommentId !== comment.id && (
+                    <>
+                        <button
+                            className="comment-action"
+                            onClick={() => {
+                                setEditingCommentId(comment.id);
+                                setEditCommentContent(comment.content);
+                            }}
+                        >
+                            ✏️ 编辑
+                        </button>
+                        <button
+                            className="comment-action"
+                            style={{ color: 'var(--error)' }}
+                            onClick={() => handleCommentDelete(comment.id)}
+                        >
+                            🗑️ 删除
+                        </button>
+                    </>
                 )}
             </div>
             {comment.replies?.map(reply => renderComment(reply, depth + 1))}
@@ -502,45 +625,71 @@ export default function PostDetailPage({ params }) {
                                 {/* iframe预览 */}
                                 {openLinks.length > 0 ? (
                                     <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
-                                        {openLinks.map((link) => (
-                                            <div key={link.id} className="preview-frame">
-                                                <div className="preview-frame-header">
-                                                    <span className="preview-frame-url" title={link.url}>
-                                                        {link.title || link.url}
-                                                    </span>
-                                                    <a
-                                                        href={link.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="btn btn-sm btn-ghost"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        ↗ 新窗口
-                                                    </a>
+                                        {openLinks.map((link) => {
+                                            const useProxy = link.useProxy || false;
+                                            const iframeSrc = useProxy
+                                                ? `/api/proxy?url=${encodeURIComponent(link.url)}`
+                                                : link.url;
+                                            return (
+                                                <div key={link.id} className="preview-frame">
+                                                    <div className="preview-frame-header">
+                                                        <span className="preview-frame-url" title={link.url}>
+                                                            {link.title || link.url}
+                                                        </span>
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button
+                                                                className={`btn btn-sm ${useProxy ? 'btn-primary' : 'btn-ghost'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOpenLinks(prev => prev.map(l =>
+                                                                        l.id === link.id
+                                                                            ? { ...l, useProxy: !l.useProxy }
+                                                                            : l
+                                                                    ));
+                                                                }}
+                                                                title={useProxy ? '当前使用代理模式' : '点击切换到代理模式'}
+                                                            >
+                                                                {useProxy ? '🔄 代理模式' : '⚡ 直连模式'}
+                                                            </button>
+                                                            <a
+                                                                href={link.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-sm btn-ghost"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                ↗ 新窗口
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    <iframe
+                                                        key={`${link.id}-${useProxy}`}
+                                                        src={iframeSrc}
+                                                        className="preview-iframe"
+                                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextSibling.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                    <div className="preview-blocked" style={{ display: 'none' }}>
+                                                        <p>⚠️ 该网站禁止嵌入显示</p>
+                                                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                                            可尝试点击上方"代理模式"按钮
+                                                        </p>
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="btn btn-primary"
+                                                            style={{ marginTop: '16px' }}
+                                                        >
+                                                            在新窗口打开
+                                                        </a>
+                                                    </div>
                                                 </div>
-                                                <iframe
-                                                    src={link.url}
-                                                    className="preview-iframe"
-                                                    sandbox="allow-scripts allow-same-origin allow-popups"
-                                                    onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                        e.target.nextSibling.style.display = 'flex';
-                                                    }}
-                                                />
-                                                <div className="preview-blocked" style={{ display: 'none' }}>
-                                                    <p>⚠️ 该网站禁止嵌入显示</p>
-                                                    <a
-                                                        href={link.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="btn btn-primary"
-                                                        style={{ marginTop: '16px' }}
-                                                    >
-                                                        在新窗口打开
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="empty-state" style={{ padding: '48px' }}>
@@ -680,13 +829,57 @@ export default function PostDetailPage({ params }) {
                                 💬 想法讨论区 ({comments.length})
                             </div>
 
+                            {/* 评论筛选 */}
+                            <div style={{ padding: '0 16px 12px' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 搜索评论（用户名/内容）..."
+                                        value={commentFilter}
+                                        onChange={(e) => setCommentFilter(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 32px 8px 12px',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-secondary)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '13px'
+                                        }}
+                                    />
+                                    {commentFilter && (
+                                        <button
+                                            onClick={() => setCommentFilter('')}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '8px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'var(--text-muted)',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                                {commentFilter && (
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        找到 {filteredCommentTree.length} 条匹配评论
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="comments-list">
-                                {commentTree.length === 0 ? (
+                                {filteredCommentTree.length === 0 ? (
                                     <div className="empty-state" style={{ padding: '24px' }}>
-                                        <p>还没有评论，来发表第一条吧！</p>
+                                        <p>{commentFilter ? '没有找到匹配的评论' : '还没有评论，来发表第一条吧！'}</p>
                                     </div>
                                 ) : (
-                                    commentTree.map(comment => renderComment(comment))
+                                    filteredCommentTree.map(comment => renderComment(comment))
                                 )}
                             </div>
 

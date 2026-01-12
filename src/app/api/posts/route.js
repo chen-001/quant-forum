@@ -11,12 +11,18 @@ export async function GET(request) {
         const order = searchParams.get('order') || 'DESC';
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = parseInt(searchParams.get('offset')) || 0;
+        const search = searchParams.get('search') || '';
 
-        console.log('API: Fetching posts with params:', { orderBy, order, limit, offset });
+        console.log('API: Fetching posts with params:', { orderBy, order, limit, offset, search });
         console.log('API: CWD:', process.cwd());
 
         try {
-            const posts = postQueries.list(orderBy, order, limit, offset);
+            let posts;
+            if (search.trim()) {
+                posts = postQueries.search(search.trim(), orderBy, order, limit, offset);
+            } else {
+                posts = postQueries.list(orderBy, order, limit, offset);
+            }
             console.log('API: Found posts count:', posts.length);
             return NextResponse.json({ posts });
         } catch (dbError) {

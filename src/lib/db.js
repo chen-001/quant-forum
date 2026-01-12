@@ -101,6 +101,46 @@ export const postQueries = {
         return stmt.all(limit, offset);
     },
 
+    search: (keyword, orderBy = 'created_at', order = 'DESC', limit = 50, offset = 0) => {
+        const db = getDb();
+        const validOrderBy = ['created_at', 'updated_at', 'avg_novelty', 'avg_test_effect',
+            'avg_extensibility', 'avg_creativity', 'avg_fun', 'avg_completeness', 'avg_total'];
+        const orderColumn = validOrderBy.includes(orderBy) ? orderBy : 'created_at';
+        const orderDirection = order === 'ASC' ? 'ASC' : 'DESC';
+
+        const searchPattern = `%${keyword}%`;
+
+        const stmt = db.prepare(`
+      SELECT DISTINCT
+        p.*,
+        u.username as author_name,
+        (SELECT COUNT(*) FROM post_links WHERE post_id = p.id) as link_count,
+        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+        COALESCE((SELECT AVG(novelty) FROM ratings WHERE post_id = p.id), 0) as avg_novelty,
+        COALESCE((SELECT AVG(test_effect) FROM ratings WHERE post_id = p.id), 0) as avg_test_effect,
+        COALESCE((SELECT AVG(extensibility) FROM ratings WHERE post_id = p.id), 0) as avg_extensibility,
+        COALESCE((SELECT AVG(creativity) FROM ratings WHERE post_id = p.id), 0) as avg_creativity,
+        COALESCE((SELECT AVG(fun) FROM ratings WHERE post_id = p.id), 0) as avg_fun,
+        COALESCE((SELECT AVG(completeness) FROM ratings WHERE post_id = p.id), 0) as avg_completeness,
+        COALESCE((SELECT AVG((novelty + test_effect + extensibility + creativity + fun + completeness) / 6.0) FROM ratings WHERE post_id = p.id), 0) as avg_total
+      FROM posts p
+      JOIN users u ON p.author_id = u.id
+      LEFT JOIN comments c ON c.post_id = p.id
+      LEFT JOIN results r ON r.post_id = p.id
+      LEFT JOIN post_ideas pi ON pi.post_id = p.id
+      WHERE 
+        p.title LIKE ? OR
+        p.content LIKE ? OR
+        u.username LIKE ? OR
+        c.content LIKE ? OR
+        r.content LIKE ? OR
+        pi.content LIKE ?
+      ORDER BY p.is_pinned DESC, ${orderColumn} ${orderDirection}
+      LIMIT ? OFFSET ?
+    `);
+        return stmt.all(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, limit, offset);
+    },
+
     updateTime: (id) => {
         const db = getDb();
         const stmt = db.prepare('UPDATE posts SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
@@ -247,6 +287,32 @@ export const commentQueries = {
       WHERE c.post_id = ? AND cr.user_id = ?
     `);
         return stmt.all(postId, userId);
+    },
+
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT c.*, u.username as author_name
+            FROM comments c
+            JOIN users u ON c.author_id = u.id
+            WHERE c.id = ?
+        `);
+        return stmt.get(id);
+    },
+
+    update: (id, authorId, content) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE comments SET content = ? WHERE id = ? AND author_id = ?');
+        return stmt.run(content, id, authorId);
+    },
+
+    delete: (id, authorId) => {
+        const db = getDb();
+        // First delete reactions for this comment
+        db.prepare('DELETE FROM comment_reactions WHERE comment_id = ?').run(id);
+        // Then delete the comment (only if author matches)
+        const stmt = db.prepare('DELETE FROM comments WHERE id = ? AND author_id = ?');
+        return stmt.run(id, authorId);
     }
 };
 

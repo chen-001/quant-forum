@@ -20,15 +20,21 @@ export default function HomePage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('created_at');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
     fetchPosts();
-  }, [sortBy]);
+  }, [sortBy, searchQuery]);
 
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/posts?orderBy=${sortBy}&order=DESC`);
+      let url = `/api/posts?orderBy=${sortBy}&order=DESC`;
+      if (searchQuery.trim()) {
+        url += `&search=${encodeURIComponent(searchQuery.trim())}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setPosts(data.posts || []);
     } catch (error) {
@@ -36,6 +42,11 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setSearchQuery(searchInput);
   };
 
   const formatDate = (dateStr) => {
@@ -57,6 +68,59 @@ export default function HomePage() {
           <h1 style={{ fontSize: '24px', fontWeight: '700' }}>
             💡 帖子列表
           </h1>
+
+          {/* 搜索栏 */}
+          <form onSubmit={handleSearch} style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 搜索帖子（标题、作者、内容、评论等）..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 40px 10px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    fontSize: '14px'
+                  }}
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      setSearchQuery('');
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      fontSize: '14px'
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <button type="submit" className="btn btn-primary">
+                搜索
+              </button>
+            </div>
+            {searchQuery && (
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                搜索 "{searchQuery}" 找到 {posts.length} 个结果
+              </div>
+            )}
+          </form>
 
           <div className="sort-tabs">
             {SORT_OPTIONS.map(option => (
