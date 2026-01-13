@@ -11,8 +11,12 @@ export default function ElectronDragRegion() {
             if (typeof window !== 'undefined') {
                 // 检测 Electron 环境的多种方式
                 const isElectronEnv =
-                    (window.process && window.process.type === 'renderer') ||
-                    (window.navigator && window.navigator.userAgent.includes('Electron'));
+                    // 1. 检查 electronAPI (由 preload.js 注入)
+                    (window.electronAPI && window.electronAPI.isElectron) ||
+                    // 2. 检查 userAgent 是否包含 Electron
+                    (window.navigator && window.navigator.userAgent.toLowerCase().includes('electron')) ||
+                    // 3. 检查 process 对象
+                    (window.process && window.process.type === 'renderer');
 
                 if (isElectronEnv) {
                     setIsElectron(true);

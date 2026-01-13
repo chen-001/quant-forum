@@ -1,12 +1,57 @@
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
+const net = require('net');
 
-// 服务器地址 - 可以修改为你的服务器地址
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5203';
+// 服务器地址配置
+const PRIMARY_SERVER = 'http://192.168.200.60:5203';
+const FALLBACK_SERVER = 'http://65.49.220.66:5203';
 
 let mainWindow;
+let serverUrl = null;
 
-function createWindow() {
+// 检测服务器是否可访问
+function checkServerAvailable(host, port, timeout = 2000) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let resolved = false;
+
+        const onError = () => {
+            if (!resolved) {
+                resolved = true;
+                socket.destroy();
+                resolve(false);
+            }
+        };
+
+        socket.setTimeout(timeout);
+        socket.on('timeout', onError);
+        socket.on('error', onError);
+
+        socket.connect(port, host, () => {
+            if (!resolved) {
+                resolved = true;
+                socket.destroy();
+                resolve(true);
+            }
+        });
+    });
+}
+
+// 获取可用的服务器地址
+async function getAvailableServer() {
+    console.log('正在检测主服务器 192.168.200.60:5203 是否可访问...');
+    const isPrimaryAvailable = await checkServerAvailable('192.168.200.60', 5203);
+
+    if (isPrimaryAvailable) {
+        console.log('主服务器可访问，使用: ' + PRIMARY_SERVER);
+        return PRIMARY_SERVER;
+    } else {
+        console.log('主服务器不可访问，使用备用服务器: ' + FALLBACK_SERVER);
+        return FALLBACK_SERVER;
+    }
+}
+
+async function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
@@ -22,8 +67,9 @@ function createWindow() {
         show: false, // 等待 ready-to-show 再显示
     });
 
-    // 加载论坛页面
-    mainWindow.loadURL(SERVER_URL);
+    // 获取可用服务器并加载论坛页面
+    serverUrl = await getAvailableServer();
+    mainWindow.loadURL(serverUrl);
 
     // 准备好后显示窗口
     mainWindow.once('ready-to-show', () => {
