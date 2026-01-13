@@ -1,4 +1,5 @@
 import './globals.css';
+import ElectronDragRegion from '@/components/ElectronDragRegion';
 
 export const metadata = {
   title: 'AI因子讨论区 - 量化研究员交流平台',
@@ -15,6 +16,7 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
       </head>
       <body suppressHydrationWarning>
+        <ElectronDragRegion />
         {children}
       </body>
     </html>

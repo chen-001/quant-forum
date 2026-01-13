@@ -70,6 +70,33 @@ body {
   line-height: 1.6;
 }
 
+/* Electron 窗口拖动区域 */
+.electron-drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  -webkit-app-region: drag;
+  z-index: 9999;
+  background: linear-gradient(135deg, #1a1a2e 0%, #252542 50%, #1e1e35 100%);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+  pointer-events: auto;
+}
+
+/* 让主体内容为拖动区域留出空间 */
+body.electron-app {
+  padding-top: 28px;
+}
+
+/* 确保按钮和链接等交互元素不受拖动影响 */
+.electron-drag-region button,
+.electron-drag-region a,
+.electron-drag-region input,
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
 a {
   color: var(--primary);
   text-decoration: none;
@@ -1349,36 +1376,36 @@ a:hover {
 
 /* 代码块特殊样式 */
 .code-block-wrapper {
-    margin: var(--spacing-md) 0;
+  margin: var(--spacing-md) 0;
 }
 
 .code-block-line {
-    display: block;
-    padding: var(--spacing-md);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
+  display: block;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
 }
 
 .code-block-content {
-    display: block;
+  display: block;
 }
 
 .code-block-content pre {
-    margin: 0;
-    padding: var(--spacing-md);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
-    overflow-x: auto;
+  margin: 0;
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
 }
 
 .code-block-content code {
-    font-family: 'Fira Code', 'Consolas', monospace;
-    font-size: 14px;
-    line-height: 1.6;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 /* 代码块内禁用选中文本高亮功能 */
 .code-block-line .line-content {
-    pointer-events: none;
+  pointer-events: none;
 }
