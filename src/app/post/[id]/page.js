@@ -34,6 +34,10 @@ export default function PostDetailPage({ params }) {
     const [editCommentContent, setEditCommentContent] = useState('');
     const [commentFilter, setCommentFilter] = useState('');
     const [isElectron, setIsElectron] = useState(false);
+    const [showAddLinkForm, setShowAddLinkForm] = useState(false);
+    const [newLinkTitle, setNewLinkTitle] = useState('');
+    const [newLinkUrl, setNewLinkUrl] = useState('');
+    const [addingLink, setAddingLink] = useState(false);
     const saveTimeoutRef = useRef(null);
     const router = useRouter();
 
@@ -602,10 +606,102 @@ export default function PostDetailPage({ params }) {
                             <div className="preview-section">
                                 <div className="preview-header">
                                     <h3 className="preview-title">🔗 AI对话链接</h3>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                                        点击链接展开预览（最多{MAX_OPEN_FRAMES}个）
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                            点击链接展开预览（最多{MAX_OPEN_FRAMES}个）
+                                        </span>
+                                        {user && (
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => setShowAddLinkForm(!showAddLinkForm)}
+                                            >
+                                                {showAddLinkForm ? '取消' : '+ 添加链接'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* 添加链接表单 */}
+                                {showAddLinkForm && (
+                                    <div style={{
+                                        padding: '16px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        marginBottom: '12px'
+                                    }}>
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                链接名称 {user && post.author_id !== user.id && <span style={{ color: 'var(--text-muted)' }}>(将自动添加您的用户名后缀)</span>}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newLinkTitle}
+                                                onChange={(e) => setNewLinkTitle(e.target.value)}
+                                                placeholder="例如：gemini, claude, chatgpt..."
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-primary)',
+                                                    color: 'var(--text-primary)'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                链接URL
+                                            </label>
+                                            <input
+                                                type="url"
+                                                value={newLinkUrl}
+                                                onChange={(e) => setNewLinkUrl(e.target.value)}
+                                                placeholder="https://..."
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px 12px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-primary)',
+                                                    color: 'var(--text-primary)'
+                                                }}
+                                            />
+                                        </div>
+                                        <button
+                                            className="btn btn-primary"
+                                            disabled={!newLinkUrl.trim() || addingLink}
+                                            onClick={async () => {
+                                                setAddingLink(true);
+                                                try {
+                                                    const res = await fetch(`/api/posts/${id}/links`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            url: newLinkUrl,
+                                                            title: newLinkTitle
+                                                        })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        setPost(prev => ({ ...prev, links: data.links }));
+                                                        setNewLinkTitle('');
+                                                        setNewLinkUrl('');
+                                                        setShowAddLinkForm(false);
+                                                    } else {
+                                                        alert(data.error || '添加链接失败');
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Failed to add link:', error);
+                                                    alert('添加链接失败，请重试');
+                                                } finally {
+                                                    setAddingLink(false);
+                                                }
+                                            }}
+                                        >
+                                            {addingLink ? '添加中...' : '添加链接'}
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* 链接选择 */}
                                 <div className="link-chips">
