@@ -54,15 +54,13 @@ export default function EditPostPage({ params }) {
     };
 
     const addLink = () => {
-        if (links.length < 10) {
+        if (links.length < 100) {
             setLinks([...links, { url: '', title: '' }]);
         }
     };
 
     const removeLink = (index) => {
-        if (links.length > 1) {
-            setLinks(links.filter((_, i) => i !== index));
-        }
+        setLinks(links.filter((_, i) => i !== index));
     };
 
     const updateLink = (index, field, value) => {
@@ -76,10 +74,6 @@ export default function EditPostPage({ params }) {
         setError('');
 
         const validLinks = links.filter(link => link.url.trim());
-        if (validLinks.length === 0) {
-            setError('请至少添加一个AI链接');
-            return;
-        }
 
         setSubmitting(true);
 
@@ -158,7 +152,7 @@ export default function EditPostPage({ params }) {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">AI对话链接 * （可添加多个）</label>
+                        <label className="form-label">AI对话链接（选填，可添加多个）</label>
                         <div className="links-input">
                             {links.map((link, index) => (
                                 <div key={index} className="link-input-row">
@@ -178,15 +172,13 @@ export default function EditPostPage({ params }) {
                                         placeholder="链接标题（选填）"
                                         style={{ flex: 1 }}
                                     />
-                                    {links.length > 1 && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-ghost"
-                                            onClick={() => removeLink(index)}
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => removeLink(index)}
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
                             ))}
                             <button

@@ -307,12 +307,13 @@ export default function InteractiveContent({ content, postId, user }) {
     };
 
     const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
+        const date = new Date(dateStr + 'Z'); // 确保解析为UTC时间
         return date.toLocaleDateString('zh-CN', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Asia/Shanghai'
         });
     };
 

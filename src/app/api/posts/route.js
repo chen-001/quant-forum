@@ -68,19 +68,17 @@ export async function POST(request) {
             postId = result.lastInsertRowid;
         } else {
             // 创建链接帖子（原有逻辑）
-            if (!links || links.length === 0) {
-                return NextResponse.json({ error: '请至少添加一个AI链接' }, { status: 400 });
-            }
-
             const result = postQueries.create(title.trim(), content || '', session.user.id);
             postId = result.lastInsertRowid;
 
-            // 添加链接
-            links.forEach((link, index) => {
-                if (link.url && link.url.trim()) {
-                    postQueries.addLink(postId, link.url.trim(), link.title || '', index);
-                }
-            });
+            // 添加链接（如果有的话）
+            if (links && links.length > 0) {
+                links.forEach((link, index) => {
+                    if (link.url && link.url.trim()) {
+                        postQueries.addLink(postId, link.url.trim(), link.title || '', index);
+                    }
+                });
+            }
         }
 
         return NextResponse.json({

@@ -45,3 +45,4 @@ next-env.d.ts
 
 public/uploads/*
 data/forum.db
+dist-electron/*

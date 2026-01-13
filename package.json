@@ -2,6 +2,8 @@
   "name": "quant-forum",
   "version": "0.1.0",
   "private": true,
+  "description": "Quant Forum Desktop Application",
+  "author": "Quant Forum Team",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 5203",
@@ -33,6 +35,7 @@
   "build": {
     "appId": "com.quantforum.desktop",
     "productName": "Quant Forum",
+    "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },

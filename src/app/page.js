@@ -50,13 +50,14 @@ export default function HomePage() {
   };
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
+    const date = new Date(dateStr + 'Z'); // 确保解析为UTC时间
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
     });
   };
 
