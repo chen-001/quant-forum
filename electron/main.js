@@ -1,6 +1,5 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, net } = require('electron');
 const path = require('path');
-const net = require('net');
 
 // 服务器地址配置
 const PRIMARY_SERVER = 'http://192.168.200.60:5203';
@@ -9,44 +8,70 @@ const FALLBACK_SERVER = 'http://65.49.220.66:5203';
 let mainWindow;
 let serverUrl = null;
 
-// 检测服务器是否可访问
-function checkServerAvailable(host, port, timeout = 2000) {
+// 通过 HTTP 请求检测服务器是否可访问
+function checkServerAvailable(url, timeout = 5000) {
     return new Promise((resolve) => {
-        const socket = new net.Socket();
         let resolved = false;
 
-        const onError = () => {
+        // 设置超时
+        const timeoutId = setTimeout(() => {
             if (!resolved) {
                 resolved = true;
-                socket.destroy();
+                console.log(`HTTP 请求超时: ${url}`);
                 resolve(false);
             }
-        };
+        }, timeout);
 
-        socket.setTimeout(timeout);
-        socket.on('timeout', onError);
-        socket.on('error', onError);
+        try {
+            const request = net.request({
+                method: 'GET',
+                url: url,
+            });
 
-        socket.connect(port, host, () => {
+            request.on('response', (response) => {
+                if (!resolved) {
+                    resolved = true;
+                    clearTimeout(timeoutId);
+                    console.log(`HTTP 响应状态码: ${response.statusCode}`);
+                    // 任何 HTTP 响应都表示服务器可访问
+                    resolve(true);
+                }
+                // 消费响应数据以关闭连接
+                response.on('data', () => { });
+                response.on('end', () => { });
+            });
+
+            request.on('error', (error) => {
+                if (!resolved) {
+                    resolved = true;
+                    clearTimeout(timeoutId);
+                    console.log(`HTTP 请求错误: ${error.message}`);
+                    resolve(false);
+                }
+            });
+
+            request.end();
+        } catch (error) {
             if (!resolved) {
                 resolved = true;
-                socket.destroy();
-                resolve(true);
+                clearTimeout(timeoutId);
+                console.log(`创建请求失败: ${error.message}`);
+                resolve(false);
             }
-        });
+        }
     });
 }
 
 // 获取可用的服务器地址
 async function getAvailableServer() {
-    console.log('正在检测主服务器 192.168.200.60:5203 是否可访问...');
-    const isPrimaryAvailable = await checkServerAvailable('192.168.200.60', 5203);
+    console.log('正在通过 HTTP 请求检测主服务器是否可访问...');
+    const isPrimaryAvailable = await checkServerAvailable(PRIMARY_SERVER);
 
     if (isPrimaryAvailable) {
-        console.log('主服务器可访问，使用: ' + PRIMARY_SERVER);
+        console.log('主服务器 HTTP 响应正常，使用: ' + PRIMARY_SERVER);
         return PRIMARY_SERVER;
     } else {
-        console.log('主服务器不可访问，使用备用服务器: ' + FALLBACK_SERVER);
+        console.log('主服务器不可访问，切换到备用服务器: ' + FALLBACK_SERVER);
         return FALLBACK_SERVER;
     }
 }
