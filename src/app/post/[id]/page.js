@@ -440,21 +440,23 @@ export default function PostDetailPage({ params }) {
                 <button
                     className={`comment-action ${userReactions.some(r => r.comment_id === comment.id && r.reaction_type === 'like') ? 'active' : ''}`}
                     onClick={() => user && handleReaction(comment.id, 'like')}
+                    data-count={comment.likes_count}
                 >
-                    👍 {comment.likes_count}
+                    👍
                 </button>
                 <button
                     className={`comment-action ${userReactions.some(r => r.comment_id === comment.id && r.reaction_type === 'doubt') ? 'active' : ''}`}
                     onClick={() => user && handleReaction(comment.id, 'doubt')}
+                    data-count={comment.doubts_count}
                 >
-                    🤔 质疑 {comment.doubts_count}
+                    🤔
                 </button>
                 {user && (
                     <button
                         className="comment-action"
                         onClick={() => setReplyTo(comment)}
                     >
-                        💬 回复
+                        💬
                     </button>
                 )}
                 {user && user.id === comment.author_id && editingCommentId !== comment.id && (
@@ -466,14 +468,14 @@ export default function PostDetailPage({ params }) {
                                 setEditCommentContent(comment.content);
                             }}
                         >
-                            ✏️ 编辑
+                            ✏️
                         </button>
                         <button
                             className="comment-action"
                             style={{ color: 'var(--error)' }}
                             onClick={() => handleCommentDelete(comment.id)}
                         >
-                            🗑️ 删除
+                            🗑️
                         </button>
                     </>
                 )}
