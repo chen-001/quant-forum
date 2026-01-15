@@ -46,3 +46,5 @@ next-env.d.ts
 public/uploads/*
 data/forum.db
 dist-electron/*
+.trae/documents/实现div元素右侧对齐.md
+.trae/documents/移除外层div容器并统一内部元素间距.md

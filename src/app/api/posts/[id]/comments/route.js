@@ -33,13 +33,13 @@ export async function POST(request, { params }) {
         }
 
         const { id } = await params;
-        const { content, parentId } = await request.json();
+        const { content, parentId, category } = await request.json();
 
         if (!content || content.trim().length === 0) {
             return NextResponse.json({ error: '评论内容不能为空' }, { status: 400 });
         }
 
-        const result = commentQueries.create(id, session.user.id, content.trim(), parentId || null);
+        const result = commentQueries.create(id, session.user.id, content.trim(), parentId || null, category || 'free');
 
         return NextResponse.json({
             message: '评论成功',

@@ -33,6 +33,7 @@ export default function PostDetailPage({ params }) {
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editCommentContent, setEditCommentContent] = useState('');
     const [commentFilter, setCommentFilter] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('free');
     const [isElectron, setIsElectron] = useState(false);
     const [showAddLinkForm, setShowAddLinkForm] = useState(false);
     const [newLinkTitle, setNewLinkTitle] = useState('');
@@ -200,7 +201,8 @@ export default function PostDetailPage({ params }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     content: newComment,
-                    parentId: replyTo?.id || null
+                    parentId: replyTo?.id || null,
+                    category: selectedCategory
                 })
             });
 
@@ -378,7 +380,23 @@ export default function PostDetailPage({ params }) {
         return filterRecursive(tree);
     };
 
-    const filteredCommentTree = filterComments(commentTree, commentFilter);
+    // Filter comments by category
+    const filterCommentsByCategory = (tree, category) => {
+        if (!category) return tree;
+        
+        const filterRecursive = (comments) => {
+            return comments
+                .filter(c => c.category === category)
+                .map(c => ({
+                    ...c,
+                    replies: filterRecursive(c.replies || [])
+                }));
+        };
+
+        return filterRecursive(tree);
+    };
+
+    const filteredCommentTree = filterCommentsByCategory(filterComments(commentTree, commentFilter), selectedCategory);
 
     const renderComment = (comment, depth = 0) => (
         <div key={comment.id} className={`comment-item ${depth > 0 ? 'reply' : ''}`}>
@@ -469,7 +487,7 @@ export default function PostDetailPage({ params }) {
             <Header />
             <main className="container">
                 {/* 帖子标题 */}
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: '0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
                             {post.title}
@@ -544,24 +562,25 @@ export default function PostDetailPage({ params }) {
                     </div>
                 </div>
 
-                {/* 正文内容 - 使用 InteractiveContent 支持逐行评论和高亮 */}
-                {post.content && (
-                    <div className="card" style={{ marginBottom: '24px' }}>
-                        <InteractiveContent
-                            content={post.content}
-                            postId={id}
-                            user={user}
-                        />
-                    </div>
-                )}
-
                 {/* 主体布局：预览区 + 讨论区 */}
                 <div className="post-detail">
-                    <div className="post-main">
+                    {/* 预览区容器：包含正文和AI链接 */}
+                    <div className="preview-section">
+                        {/* 正文内容 - 使用 InteractiveContent 支持逐行评论和高亮 */}
+                        {post.content && (
+                            <div style={{ paddingBottom: '1vh' }}>
+                                <InteractiveContent
+                                    content={post.content}
+                                    postId={id}
+                                    user={user}
+                                />
+                            </div>
+                        )}
+
                         {/* 表格或链接预览区 */}
                         {post.post_type === 'table' ? (
                             /* 表格帖子显示 - 登录用户可编辑 */
-                            <div className="preview-section">
+                            <>
                                 <div className="preview-header">
                                     <h3 className="preview-title">📊 表格内容</h3>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -600,10 +619,10 @@ export default function PostDetailPage({ params }) {
                                         readOnly={!user}
                                     />
                                 </div>
-                            </div>
+                            </>
                         ) : (
                             /* 链接帖子显示 */
-                            <div className="preview-section">
+                            <>
                                 <div className="preview-header">
                                     <h3 className="preview-title">🔗 AI对话链接</h3>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -621,350 +640,376 @@ export default function PostDetailPage({ params }) {
                                     </div>
                                 </div>
 
-                                {/* 添加链接表单 */}
-                                {showAddLinkForm && (
-                                    <div style={{
-                                        padding: '16px',
-                                        background: 'var(--bg-secondary)',
-                                        borderRadius: 'var(--radius-md)',
-                                        marginBottom: '12px'
-                                    }}>
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                                链接名称 {user && post.author_id !== user.id && <span style={{ color: 'var(--text-muted)' }}>(将自动添加您的用户名后缀)</span>}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={newLinkTitle}
-                                                onChange={(e) => setNewLinkTitle(e.target.value)}
-                                                placeholder="例如：gemini, claude, chatgpt..."
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px 12px',
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-primary)',
-                                                    color: 'var(--text-primary)'
-                                                }}
-                                            />
-                                        </div>
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                                链接URL
-                                            </label>
-                                            <input
-                                                type="url"
-                                                value={newLinkUrl}
-                                                onChange={(e) => setNewLinkUrl(e.target.value)}
-                                                placeholder="https://..."
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px 12px',
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-primary)',
-                                                    color: 'var(--text-primary)'
-                                                }}
-                                            />
-                                        </div>
-                                        <button
-                                            className="btn btn-primary"
-                                            disabled={!newLinkUrl.trim() || addingLink}
-                                            onClick={async () => {
-                                                setAddingLink(true);
-                                                try {
-                                                    const res = await fetch(`/api/posts/${id}/links`, {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            url: newLinkUrl,
-                                                            title: newLinkTitle
-                                                        })
-                                                    });
-                                                    const data = await res.json();
-                                                    if (res.ok) {
-                                                        setPost(prev => ({ ...prev, links: data.links }));
-                                                        setNewLinkTitle('');
-                                                        setNewLinkUrl('');
-                                                        setShowAddLinkForm(false);
-                                                    } else {
-                                                        alert(data.error || '添加链接失败');
-                                                    }
-                                                } catch (error) {
-                                                    console.error('Failed to add link:', error);
-                                                    alert('添加链接失败，请重试');
-                                                } finally {
-                                                    setAddingLink(false);
-                                                }
+                            {/* 添加链接表单 */}
+                            {showAddLinkForm && (
+                                <div style={{
+                                    padding: '16px',
+                                    background: 'var(--bg-secondary)',
+                                    borderRadius: 'var(--radius-md)',
+                                    marginBottom: '12px'
+                                }}>
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                            链接名称 {user && post.author_id !== user.id && <span style={{ color: 'var(--text-muted)' }}>(将自动添加您的用户名后缀)</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newLinkTitle}
+                                            onChange={(e) => setNewLinkTitle(e.target.value)}
+                                            placeholder="例如：gemini, claude, chatgpt..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                borderRadius: 'var(--radius-sm)',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--bg-primary)',
+                                                color: 'var(--text-primary)'
                                             }}
-                                        >
-                                            {addingLink ? '添加中...' : '添加链接'}
-                                        </button>
+                                        />
                                     </div>
-                                )}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                            链接URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={newLinkUrl}
+                                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                                            placeholder="https://..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px',
+                                                borderRadius: 'var(--radius-sm)',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--bg-primary)',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        />
+                                    </div>
+                                    <button
+                                        className="btn btn-primary"
+                                        disabled={!newLinkUrl.trim() || addingLink}
+                                        onClick={async () => {
+                                            setAddingLink(true);
+                                            try {
+                                                const res = await fetch(`/api/posts/${id}/links`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        url: newLinkUrl,
+                                                        title: newLinkTitle
+                                                    })
+                                                });
+                                                const data = await res.json();
+                                                if (res.ok) {
+                                                    setPost(prev => ({ ...prev, links: data.links }));
+                                                    setNewLinkTitle('');
+                                                    setNewLinkUrl('');
+                                                    setShowAddLinkForm(false);
+                                                } else {
+                                                    alert(data.error || '添加链接失败');
+                                                }
+                                            } catch (error) {
+                                                console.error('Failed to add link:', error);
+                                                alert('添加链接失败，请重试');
+                                            } finally {
+                                                setAddingLink(false);
+                                            }
+                                        }}
+                                    >
+                                        {addingLink ? '添加中...' : '添加链接'}
+                                    </button>
+                                </div>
+                            )}
 
-                                {/* 链接选择 */}
-                                <div className="link-chips">
-                                    {post.links?.map((link) => {
-                                        const isOpen = openLinks.some(l => l.id === link.id);
+                            {/* 链接选择 */}
+                            <div className="link-chips">
+                                {post.links?.map((link) => {
+                                    const isOpen = openLinks.some(l => l.id === link.id);
+                                    return (
+                                        <div
+                                            key={link.id}
+                                            className={`link-chip ${isOpen ? 'active' : ''}`}
+                                            onClick={() => toggleLink(link)}
+                                        >
+                                            <span>{link.title || `链接 ${link.order_num + 1}`}</span>
+                                            {isOpen && (
+                                                <span
+                                                    className="link-chip-close"
+                                                    onClick={(e) => { e.stopPropagation(); closeLink(link.id); }}
+                                                >
+                                                    ✕
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* iframe预览 */}
+                            {openLinks.length > 0 ? (
+                                <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
+                                    {openLinks.map((link) => {
+                                        const useProxy = link.useProxy || false;
+                                        const iframeSrc = useProxy
+                                            ? `/api/proxy?url=${encodeURIComponent(link.url)}`
+                                            : link.url;
                                         return (
-                                            <div
-                                                key={link.id}
-                                                className={`link-chip ${isOpen ? 'active' : ''}`}
-                                                onClick={() => toggleLink(link)}
-                                            >
-                                                <span>{link.title || `链接 ${link.order_num + 1}`}</span>
-                                                {isOpen && (
-                                                    <span
-                                                        className="link-chip-close"
-                                                        onClick={(e) => { e.stopPropagation(); closeLink(link.id); }}
-                                                    >
-                                                        ✕
+                                            <div key={link.id} className="preview-frame">
+                                                <div className="preview-frame-header">
+                                                    <span className="preview-frame-url" title={link.url}>
+                                                        {link.title || link.url}
                                                     </span>
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        {isElectron && (
+                                                            <span style={{
+                                                                fontSize: '12px',
+                                                                color: 'var(--success)',
+                                                                background: 'rgba(16, 185, 129, 0.1)',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '4px'
+                                                            }}>
+                                                                🖥️ 桌面模式
+                                                            </span>
+                                                        )}
+                                                        {!isElectron && (
+                                                            <button
+                                                                className={`btn btn-sm ${useProxy ? 'btn-primary' : 'btn-ghost'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOpenLinks(prev => prev.map(l =>
+                                                                        l.id === link.id
+                                                                            ? { ...l, useProxy: !l.useProxy }
+                                                                            : l
+                                                                    ));
+                                                                }}
+                                                                title={useProxy ? '当前使用代理模式' : '点击切换到代理模式'}
+                                                            >
+                                                                {useProxy ? '🔄 代理模式' : '⚡ 直连模式'}
+                                                            </button>
+                                                        )}
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="btn btn-sm btn-ghost"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            ↗ 新窗口
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                {isElectron ? (
+                                                    /* Electron 环境使用 webview，可加载任何网页 */
+                                                    <webview
+                                                        src={link.url}
+                                                        className="preview-iframe"
+                                                        style={{ width: '100%', height: '100%', border: 'none' }}
+                                                    />
+                                                ) : (
+                                                    /* 浏览器环境使用 iframe */
+                                                    <iframe
+                                                        key={`${link.id}-${useProxy}`}
+                                                        src={iframeSrc}
+                                                        className="preview-iframe"
+                                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextSibling.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                )}
+                                                {!isElectron && (
+                                                    <div className="preview-blocked" style={{ display: 'none' }}>
+                                                        <p>⚠️ 该网站禁止嵌入显示</p>
+                                                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                                            使用桌面客户端可打开任何网页
+                                                        </p>
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="btn btn-primary"
+                                                            style={{ marginTop: '16px' }}
+                                                        >
+                                                            在新窗口打开
+                                                        </a>
+                                                    </div>
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
-
-                                {/* iframe预览 */}
-                                {openLinks.length > 0 ? (
-                                    <div className={`preview-frames ${openLinks.length > 1 ? 'multi-frame' : ''}`}>
-                                        {openLinks.map((link) => {
-                                            const useProxy = link.useProxy || false;
-                                            const iframeSrc = useProxy
-                                                ? `/api/proxy?url=${encodeURIComponent(link.url)}`
-                                                : link.url;
-                                            return (
-                                                <div key={link.id} className="preview-frame">
-                                                    <div className="preview-frame-header">
-                                                        <span className="preview-frame-url" title={link.url}>
-                                                            {link.title || link.url}
-                                                        </span>
-                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                            {isElectron && (
-                                                                <span style={{
-                                                                    fontSize: '12px',
-                                                                    color: 'var(--success)',
-                                                                    background: 'rgba(16, 185, 129, 0.1)',
-                                                                    padding: '2px 8px',
-                                                                    borderRadius: '4px'
-                                                                }}>
-                                                                    🖥️ 桌面模式
-                                                                </span>
-                                                            )}
-                                                            {!isElectron && (
-                                                                <button
-                                                                    className={`btn btn-sm ${useProxy ? 'btn-primary' : 'btn-ghost'}`}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setOpenLinks(prev => prev.map(l =>
-                                                                            l.id === link.id
-                                                                                ? { ...l, useProxy: !l.useProxy }
-                                                                                : l
-                                                                        ));
-                                                                    }}
-                                                                    title={useProxy ? '当前使用代理模式' : '点击切换到代理模式'}
-                                                                >
-                                                                    {useProxy ? '🔄 代理模式' : '⚡ 直连模式'}
-                                                                </button>
-                                                            )}
-                                                            <a
-                                                                href={link.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="btn btn-sm btn-ghost"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                ↗ 新窗口
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                    {isElectron ? (
-                                                        /* Electron 环境使用 webview，可加载任何网页 */
-                                                        <webview
-                                                            src={link.url}
-                                                            className="preview-iframe"
-                                                            style={{ width: '100%', height: '100%', border: 'none' }}
-                                                        />
-                                                    ) : (
-                                                        /* 浏览器环境使用 iframe */
-                                                        <iframe
-                                                            key={`${link.id}-${useProxy}`}
-                                                            src={iframeSrc}
-                                                            className="preview-iframe"
-                                                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox"
-                                                            onError={(e) => {
-                                                                e.target.style.display = 'none';
-                                                                e.target.nextSibling.style.display = 'flex';
-                                                            }}
-                                                        />
-                                                    )}
-                                                    {!isElectron && (
-                                                        <div className="preview-blocked" style={{ display: 'none' }}>
-                                                            <p>⚠️ 该网站禁止嵌入显示</p>
-                                                            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                                                使用桌面客户端可打开任何网页
-                                                            </p>
-                                                            <a
-                                                                href={link.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="btn btn-primary"
-                                                                style={{ marginTop: '16px' }}
-                                                            >
-                                                                在新窗口打开
-                                                            </a>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="empty-state" style={{ padding: '48px' }}>
-                                        <p>👆 点击上方链接以展开预览</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* 很有意思的想法区 - 仅链接帖子显示 */}
-                        {post.post_type !== 'table' && (
-                            <div className="ideas-section" style={{
-                                background: 'var(--bg-card)',
-                                borderRadius: 'var(--radius-lg)',
-                                padding: 'var(--spacing-lg)',
-                                marginBottom: 'var(--spacing-lg)'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>💡 很有意思的想法区</h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        {ideasSaving && (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>保存中...</span>
-                                        )}
-                                        {ideasLastEditor && !ideasEditing && (
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                                                上次编辑: {ideasLastEditor}
-                                            </span>
-                                        )}
-                                        {user && (
-                                            <button
-                                                className="btn btn-ghost btn-sm"
-                                                onClick={() => setIdeasEditing(!ideasEditing)}
-                                            >
-                                                {ideasEditing ? '取消' : '✏️ 编辑'}
-                                            </button>
-                                        )}
-                                    </div>
+                            ) : (
+                                <div className="empty-state" style={{ padding: '48px' }}>
+                                    <p>👆 点击上方链接以展开预览</p>
                                 </div>
-
-                                {ideasEditing ? (
-                                    <div>
-                                        <MarkdownEditor
-                                            value={ideasContent}
-                                            onChange={setIdeasContent}
-                                            placeholder="分享你觉得有意思的想法，任何人都可以编辑这里..."
-                                            minHeight={200}
-                                        />
-                                        <button
-                                            className="btn btn-primary"
-                                            style={{ marginTop: '12px' }}
-                                            onClick={handleIdeasSave}
-                                            disabled={ideasSaving}
-                                        >
-                                            保存想法
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div style={{ color: 'var(--text-secondary)' }}>
-                                        {ideasContent ? (
-                                            <MarkdownRenderer content={ideasContent} />
-                                        ) : (
-                                            <div className="empty-state" style={{ padding: '32px' }}>
-                                                <p>暂无内容，{user ? '点击编辑添加想法' : '登录后可以编辑'}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            )}
+                            </>
                         )}
+                    </div>
 
-                        {/* 成果记录区 */}
-                        <div className="results-section">
-                            <div className="results-header">
-                                <h3 className="results-title">🏆 成果记录</h3>
-                                {user && (
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={() => setShowResultForm(!showResultForm)}
-                                    >
-                                        {showResultForm ? '取消' : '+ 添加成果'}
-                                    </button>
-                                )}
+                    {/* 很有意思的想法区 - 仅链接帖子显示 */}
+                    {post.post_type !== 'table' && (
+                        <div className="ideas-section" style={{
+                            background: 'var(--bg-card)',
+                            borderRadius: 'var(--radius-lg)',
+                            padding: 'var(--spacing-lg)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>💡 很有意思的想法区</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {ideasSaving && (
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>保存中...</span>
+                                    )}
+                                    {ideasLastEditor && !ideasEditing && (
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                                            上次编辑: {ideasLastEditor}
+                                        </span>
+                                    )}
+                                    {user && (
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => setIdeasEditing(!ideasEditing)}
+                                        >
+                                            {ideasEditing ? '取消' : '✏️ 编辑'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
-                            {showResultForm && (
-                                <div style={{ marginBottom: '16px' }}>
+                            {ideasEditing ? (
+                                <div>
                                     <MarkdownEditor
-                                        value={newResult}
-                                        onChange={setNewResult}
-                                        placeholder="记录这个想法的最终成果，支持Markdown..."
-                                        minHeight={150}
+                                        value={ideasContent}
+                                        onChange={setIdeasContent}
+                                        placeholder="分享你觉得有意思的想法，任何人都可以编辑这里..."
+                                        minHeight={200}
                                     />
                                     <button
                                         className="btn btn-primary"
-                                        style={{ marginTop: '8px' }}
-                                        onClick={handleResultSubmit}
+                                        style={{ marginTop: '12px' }}
+                                        onClick={handleIdeasSave}
+                                        disabled={ideasSaving}
                                     >
-                                        保存成果
+                                        保存想法
                                     </button>
                                 </div>
-                            )}
-
-                            {results.length === 0 ? (
-                                <div className="empty-state" style={{ padding: '32px' }}>
-                                    <p>暂无成果记录</p>
-                                </div>
                             ) : (
-                                <div className="results-list">
-                                    {results.map(result => (
-                                        <div key={result.id} className="result-item">
-                                            <div className="result-meta">
-                                                <span>👤 {result.author_name}</span>
-                                                <span>📅 {formatDate(result.created_at)}</span>
-                                            </div>
-                                            <MarkdownRenderer content={result.content} />
+                                <div style={{ color: 'var(--text-secondary)' }}>
+                                    {ideasContent ? (
+                                        <MarkdownRenderer content={ideasContent} />
+                                    ) : (
+                                        <div className="empty-state" style={{ padding: '32px' }}>
+                                            <p>暂无内容，{user ? '点击编辑添加想法' : '登录后可以编辑'}</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             )}
                         </div>
+                    )}
 
-                        {/* 评分区 - 仅链接帖子显示 */}
-                        {post.post_type !== 'table' && (
-                            <RatingPanel
-                                postId={id}
-                                averages={ratings}
-                                userRating={userRating}
-                                onUpdate={(newRatings) => setRatings(newRatings)}
-                            />
+                    {/* 成果记录区 */}
+                    <div className="results-section">
+                        <div className="results-header">
+                            <h3 className="results-title">🏆 成果记录</h3>
+                            {user && (
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => setShowResultForm(!showResultForm)}
+                                >
+                                    {showResultForm ? '取消' : '+ 添加成果'}
+                                </button>
+                            )}
+                        </div>
+
+                        {showResultForm && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <MarkdownEditor
+                                    value={newResult}
+                                    onChange={setNewResult}
+                                    placeholder="记录这个想法的最终成果，支持Markdown..."
+                                    minHeight={150}
+                                />
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ marginTop: '8px' }}
+                                    onClick={handleResultSubmit}
+                                >
+                                    保存成果
+                                </button>
+                            </div>
+                        )}
+
+                        {results.length === 0 ? (
+                            <div className="empty-state" style={{ padding: '32px' }}>
+                                <p>暂无成果记录</p>
+                            </div>
+                        ) : (
+                            <div className="results-list">
+                                {results.map(result => (
+                                    <div key={result.id} className="result-item">
+                                        <div className="result-meta">
+                                            <span>👤 {result.author_name}</span>
+                                            <span>📅 {formatDate(result.created_at)}</span>
+                                        </div>
+                                        <MarkdownRenderer content={result.content} />
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
+
+                    {/* 评分区 - 仅链接帖子显示 */}
+                    {post.post_type !== 'table' && (
+                        <RatingPanel
+                            postId={id}
+                            averages={ratings}
+                            userRating={userRating}
+                            onUpdate={(newRatings) => setRatings(newRatings)}
+                        />
+                    )}
 
                     {/* 想法讨论区（侧边栏） */}
                     <div className="post-sidebar">
                         <div className="discussion-section">
-                            <div className="discussion-header">
-                                💬 想法讨论区 ({comments.length})
-                            </div>
+                            {/* 左侧控制面板 */}
+                            <div className="discussion-sidebar">
+                                <div className="discussion-header">
+                                    💬 想法讨论区 ({comments.length})
+                                </div>
 
-                            {/* 评论筛选 */}
-                            <div style={{ padding: '0 16px 12px' }}>
+                                {/* 子板块Tab导航 */}
+                                {post.post_type !== 'table' && post.links && post.links.length > 0 && (
+                                    <div className="discussion-tabs">
+                                        {post.links.map((link) => {
+                                            const categoryCommentCount = comments.filter(c => c.category === link.title).length;
+                                            return (
+                                                <button
+                                                    key={link.id}
+                                                    className={`discussion-tab ${selectedCategory === link.title ? 'active' : ''}`}
+                                                    onClick={() => setSelectedCategory(link.title)}
+                                                >
+                                                    <span>{link.title}</span>
+                                                    <span className="discussion-tab-count">({categoryCommentCount})</span>
+                                                </button>
+                                            );
+                                        })}
+                                        <button
+                                            className={`discussion-tab ${selectedCategory === 'free' ? 'active' : ''}`}
+                                            onClick={() => setSelectedCategory('free')}
+                                        >
+                                            <span>自由</span>
+                                            <span className="discussion-tab-count">({comments.filter(c => c.category === 'free').length})</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* 评论筛选 */}
                                 <div style={{ position: 'relative' }}>
                                     <input
                                         type="text"
-                                        placeholder="🔍 搜索评论（用户名/内容）..."
+                                        placeholder="🔍 搜索评论..."
                                         value={commentFilter}
                                         onChange={(e) => setCommentFilter(e.target.value)}
                                         style={{
@@ -972,7 +1017,7 @@ export default function PostDetailPage({ params }) {
                                             padding: '8px 32px 8px 12px',
                                             borderRadius: 'var(--radius-md)',
                                             border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-secondary)',
+                                            background: 'var(--bg-tertiary)',
                                             color: 'var(--text-primary)',
                                             fontSize: '13px'
                                         }}
@@ -998,65 +1043,72 @@ export default function PostDetailPage({ params }) {
                                 </div>
                                 {commentFilter && (
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                        找到 {filteredCommentTree.length} 条匹配评论
+                                        找到 {filteredCommentTree.length} 条匹配
                                     </div>
                                 )}
                             </div>
 
-                            <div className="comments-list">
-                                {filteredCommentTree.length === 0 ? (
-                                    <div className="empty-state" style={{ padding: '24px' }}>
-                                        <p>{commentFilter ? '没有找到匹配的评论' : '还没有评论，来发表第一条吧！'}</p>
-                                    </div>
-                                ) : (
-                                    filteredCommentTree.map(comment => renderComment(comment))
-                                )}
-                            </div>
+                            {/* 右侧评论区域 */}
+                            <div className="discussion-content">
+                                <div className="comments-list">
+                                    {filteredCommentTree.length === 0 ? (
+                                        <div className="empty-state" style={{ padding: '24px' }}>
+                                            <p>{commentFilter ? '没有找到匹配的评论' : '还没有评论，来发表第一条吧！'}</p>
+                                        </div>
+                                    ) : (
+                                        filteredCommentTree.map(comment => renderComment(comment))
+                                    )}
+                                </div>
 
-                            {user ? (
-                                <div className="comment-input-container">
-                                    {replyTo && (
-                                        <div style={{
-                                            padding: '8px',
-                                            marginBottom: '8px',
-                                            background: 'var(--primary-light)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            fontSize: '13px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                        }}>
-                                            <span>回复 @{replyTo.author_name}</span>
+                                {user ? (
+                                    <div className="comment-input-container">
+                                        {replyTo && (
+                                            <div style={{
+                                                padding: '8px',
+                                                marginBottom: '8px',
+                                                background: 'var(--primary-light)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                fontSize: '13px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span>回复 @{replyTo.author_name}</span>
+                                                <button
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={() => setReplyTo(null)}
+                                                >
+                                                    取消
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <MarkdownEditor
+                                                    value={newComment}
+                                                    onChange={setNewComment}
+                                                    placeholder={`在「${selectedCategory === 'free' ? '自由' : selectedCategory}」区写下你的想法，支持Markdown...（支持粘贴图片）`}
+                                                    minHeight={80}
+                                                />
+                                            </div>
                                             <button
-                                                className="btn btn-ghost btn-sm"
-                                                onClick={() => setReplyTo(null)}
+                                                className="btn btn-primary"
+                                                style={{ marginTop: '0', whiteSpace: 'nowrap', height: '80px' }}
+                                                onClick={handleCommentSubmit}
+                                                disabled={!newComment.trim()}
                                             >
-                                                取消
+                                                发表
                                             </button>
                                         </div>
-                                    )}
-                                    <MarkdownEditor
-                                        value={newComment}
-                                        onChange={setNewComment}
-                                        placeholder="写下你的想法，支持Markdown..."
-                                        minHeight={80}
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        style={{ marginTop: '8px', width: '100%' }}
-                                        onClick={handleCommentSubmit}
-                                        disabled={!newComment.trim()}
-                                    >
-                                        发表评论
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="comment-input-container" style={{ textAlign: 'center' }}>
-                                    <a href="/login" className="btn btn-primary">
-                                        登录后参与讨论
-                                    </a>
-                                </div>
-                            )}
+                                    </div>
+                                ) : (
+                                    <div className="comment-input-container" style={{ textAlign: 'center' }}>
+                                        <a href="/login" className="btn btn-primary">
+                                            登录后参与讨论
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div >

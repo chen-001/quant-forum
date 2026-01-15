@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
+import ImageLightbox from './ImageLightbox';
 
 // 配置 marked
 marked.setOptions({
@@ -44,6 +45,9 @@ function renderLatex(text) {
 
 export default function MarkdownRenderer({ content }) {
     const [html, setHtml] = useState('');
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [currentImage, setCurrentImage] = useState(null);
+    const containerRef = useRef(null);
 
     useEffect(() => {
         if (!content) {
@@ -56,11 +60,40 @@ export default function MarkdownRenderer({ content }) {
         setHtml(rendered);
     }, [content]);
 
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handleImageClick = (e) => {
+            const img = e.target.closest('img');
+            if (img && !img.closest('.no-lightbox')) {
+                e.preventDefault();
+                e.stopPropagation();
+                setCurrentImage({
+                    src: img.src,
+                    alt: img.alt || img.title || ''
+                });
+                setLightboxOpen(true);
+            }
+        };
+
+        container.addEventListener('click', handleImageClick);
+        return () => container.removeEventListener('click', handleImageClick);
+    }, [html]);
+
     return (
-        <div
-            className="markdown-content"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <>
+            <div
+                ref={containerRef}
+                className="markdown-content"
+                dangerouslySetInnerHTML={{ __html: html }}
+            />
+            <ImageLightbox
+                isOpen={lightboxOpen}
+                image={currentImage}
+                onClose={() => setLightboxOpen(false)}
+            />
+        </>
     );
 }
 
@@ -126,16 +159,18 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }
 
     return (
         <div className="markdown-editor">
-            <div className="editor-toolbar" style={{
-                display: 'flex',
-                gap: '8px',
-                marginBottom: '8px',
-                padding: '8px',
-                background: 'var(--bg-tertiary)',
-                borderRadius: 'var(--radius-md)'
-            }}>
-                <label className="btn btn-sm btn-ghost" style={{ cursor: 'pointer' }}>
-                    {uploading ? '上传中...' : '📎 上传文件'}
+            <div className="editor-input-wrapper">
+                <textarea
+                    ref={textareaRef}
+                    className="textarea"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    onPaste={handlePaste}
+                    placeholder={placeholder}
+                    style={{ minHeight }}
+                />
+                <label className="upload-icon-btn" title="上传文件">
+                    {uploading ? '⏳' : '📎'}
                     <input
                         type="file"
                         style={{ display: 'none' }}
@@ -143,19 +178,7 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }
                         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.py,.js"
                     />
                 </label>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', alignSelf: 'center' }}>
-                    支持粘贴图片
-                </span>
             </div>
-            <textarea
-                ref={textareaRef}
-                className="textarea"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onPaste={handlePaste}
-                placeholder={placeholder}
-                style={{ minHeight }}
-            />
         </div>
     );
 }

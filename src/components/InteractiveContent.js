@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
+import ImageLightbox from './ImageLightbox';
 
 /**
  * 识别内容中的代码块
@@ -124,6 +125,8 @@ export default function InteractiveContent({ content, postId, user }) {
     const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
     const [selectedRange, setSelectedRange] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState({ show: false, highlightId: null });
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [currentImage, setCurrentImage] = useState(null);
     const contentRef = useRef(null);
 
     // 将内容分行处理
@@ -325,6 +328,19 @@ export default function InteractiveContent({ content, postId, user }) {
             e.stopPropagation();
             const highlightId = mark.getAttribute('data-highlight-id');
             setDeleteConfirm({ show: true, highlightId: parseInt(highlightId) });
+            return;
+        }
+
+        // 处理图片点击
+        const img = e.target.closest('img');
+        if (img && !img.closest('.no-lightbox')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setCurrentImage({
+                src: img.src,
+                alt: img.alt || img.title || ''
+            });
+            setLightboxOpen(true);
         }
     };
 
@@ -588,6 +604,12 @@ export default function InteractiveContent({ content, postId, user }) {
                     }
                 })}
             </div>
+
+            <ImageLightbox
+                isOpen={lightboxOpen}
+                image={currentImage}
+                onClose={() => setLightboxOpen(false)}
+            />
         </div>
     );
 }

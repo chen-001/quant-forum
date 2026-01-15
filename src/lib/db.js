@@ -221,10 +221,10 @@ export const postQueries = {
 
 // 评论相关操作
 export const commentQueries = {
-    create: (postId, authorId, content, parentId = null) => {
+    create: (postId, authorId, content, parentId = null, category = 'free') => {
         const db = getDb();
-        const stmt = db.prepare('INSERT INTO comments (post_id, author_id, content, parent_id) VALUES (?, ?, ?, ?)');
-        const result = stmt.run(postId, authorId, content, parentId);
+        const stmt = db.prepare('INSERT INTO comments (post_id, author_id, content, parent_id, category) VALUES (?, ?, ?, ?, ?)');
+        const result = stmt.run(postId, authorId, content, parentId, category);
         postQueries.updateTime(postId);
         return result;
     },

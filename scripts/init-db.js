@@ -47,6 +47,7 @@ addColumnIfNotExists('posts', 'updated_at', "DATETIME DEFAULT CURRENT_TIMESTAMP"
 // 迁移：为 comments 表添加列
 addColumnIfNotExists('comments', 'likes_count', "INTEGER DEFAULT 0");
 addColumnIfNotExists('comments', 'doubts_count', "INTEGER DEFAULT 0");
+addColumnIfNotExists('comments', 'category', "TEXT DEFAULT 'free'");
 
 // 创建表格帖子数据表
 db.exec(`
