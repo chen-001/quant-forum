@@ -248,6 +248,9 @@ addColumnIfNotExists('favorites', 'visibility', "TEXT DEFAULT 'public' CHECK(vis
 // 为 todos 表添加 visibility 字段
 addColumnIfNotExists('todos', 'visibility', "TEXT DEFAULT 'public' CHECK(visibility IN ('public', 'private'))");
 
+// 为 todos 表添加 transferred_from 字段（用于流转功能）
+addColumnIfNotExists('todos', 'transferred_from', 'INTEGER');
+
 console.log('数据库表创建成功！');
 db.close();
 

@@ -710,5 +710,17 @@ export const todoQueries = {
         const stmt = db.prepare(query);
         const result = stmt.get(...params);
         return !!result;
+    },
+
+    transfer: (todoId, targetUserId, originalUserId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE todos
+            SET user_id = ?,
+                transferred_from = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        `);
+        return stmt.run(targetUserId, originalUserId, todoId, originalUserId);
     }
 };

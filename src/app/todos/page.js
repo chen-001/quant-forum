@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { MarkdownEditor } from '@/components/MarkdownRenderer';
+import UserTransferModal from '@/components/UserTransferModal';
 import Link from 'next/link';
 
 export default function TodosPage() {
+    const [user, setUser] = useState(null);
     const [todos, setTodos] = useState([]);
     const [filter, setFilter] = useState('incomplete');
     const [scope, setScope] = useState('mine');
@@ -15,10 +17,23 @@ export default function TodosPage() {
     const [editingNote, setEditingNote] = useState(null);
     const [noteContent, setNoteContent] = useState('');
     const [savingNote, setSavingNote] = useState(false);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [selectedTodoId, setSelectedTodoId] = useState(null);
 
     useEffect(() => {
+        fetchUser();
         fetchTodos();
     }, [filter, scope]);
+
+    const fetchUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            const data = await res.json();
+            setUser(data.user);
+        } catch (error) {
+            console.error('Failed to fetch user:', error);
+        }
+    };
 
     // 当 scope 变为 'mine' 时，重置选中的用户
     useEffect(() => {
@@ -134,6 +149,27 @@ export default function TodosPage() {
             console.error('Failed to save note:', error);
         } finally {
             setSavingNote(false);
+        }
+    };
+
+    const handleTransfer = async (todoId, targetUserId) => {
+        try {
+            const res = await fetch(`/api/todos/${todoId}/transfer`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId })
+            });
+
+            if (res.ok) {
+                // 从列表中移除该待办（因为已经不属于当前用户）
+                setTodos(todos.filter(t => t.id !== todoId));
+            } else {
+                const data = await res.json();
+                alert(data.error || '流转失败');
+            }
+        } catch (error) {
+            console.error('Failed to transfer todo:', error);
+            alert('流转失败');
         }
     };
 
@@ -392,6 +428,18 @@ export default function TodosPage() {
                                         {scope === 'mine' && (
                                             <button
                                                 className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                    setSelectedTodoId(todo.id);
+                                                    setShowTransferModal(true);
+                                                }}
+                                                title="流转给其他用户"
+                                            >
+                                                🔄 流转
+                                            </button>
+                                        )}
+                                        {scope === 'mine' && (
+                                            <button
+                                                className="btn btn-ghost btn-sm"
                                                 onClick={() => handleToggleVisibility(todo.id, todo.visibility || 'public')}
                                                 title={(todo.visibility || 'public') === 'public' ? '设为仅自己可见' : '设为所有人可见'}
                                             >
@@ -419,6 +467,12 @@ export default function TodosPage() {
                     )}
                 </div>
             </main>
+            <UserTransferModal
+                isOpen={showTransferModal}
+                onClose={() => setShowTransferModal(false)}
+                onTransfer={(targetUserId) => handleTransfer(selectedTodoId, targetUserId)}
+                currentUserId={user?.id}
+            />
         </>
     );
 }
