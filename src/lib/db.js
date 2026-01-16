@@ -556,9 +556,9 @@ export const favoriteQueries = {
         return stmt.run(visibility, id, userId);
     },
 
-    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+    findExists: ({ userId, contentType, postId, commentId, resultId }) => {
         const db = getDb();
-        let query = 'SELECT id FROM favorites WHERE user_id = ? AND content_type = ? AND post_id = ?';
+        let query = 'SELECT * FROM favorites WHERE user_id = ? AND content_type = ? AND post_id = ?';
         let params = [userId, contentType, postId];
 
         if (commentId) {
@@ -572,8 +572,11 @@ export const favoriteQueries = {
         }
 
         const stmt = db.prepare(query);
-        const result = stmt.get(...params);
-        return !!result;
+        return stmt.get(...params);
+    },
+
+    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+        return !!favoriteQueries.findExists({ userId, contentType, postId, commentId, resultId });
     }
 };
 
@@ -692,9 +695,9 @@ export const todoQueries = {
         return stmt.run(visibility, id, userId);
     },
 
-    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+    findExists: ({ userId, contentType, postId, commentId, resultId }) => {
         const db = getDb();
-        let query = 'SELECT id FROM todos WHERE user_id = ? AND content_type = ? AND post_id = ?';
+        let query = 'SELECT * FROM todos WHERE user_id = ? AND content_type = ? AND post_id = ?';
         let params = [userId, contentType, postId];
 
         if (commentId) {
@@ -708,8 +711,11 @@ export const todoQueries = {
         }
 
         const stmt = db.prepare(query);
-        const result = stmt.get(...params);
-        return !!result;
+        return stmt.get(...params);
+    },
+
+    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+        return !!todoQueries.findExists({ userId, contentType, postId, commentId, resultId });
     },
 
     transfer: (todoId, targetUserId, originalUserId) => {

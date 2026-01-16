@@ -13,6 +13,7 @@ export default function FavoriteTodoIndicator({
     const [isFavorited, setIsFavorited] = useState(false);
     const [isTodo, setIsTodo] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [toggling, setToggling] = useState(false);
 
     useEffect(() => {
         checkStatus();
@@ -44,29 +45,49 @@ export default function FavoriteTodoIndicator({
         }
     };
 
+    const handleToggleFavorite = async () => {
+        setToggling(true);
+        try {
+            await onToggleFavorite();
+            // 等待 API 完成后重新检查状态
+            await checkStatus();
+        } finally {
+            setToggling(false);
+        }
+    };
+
+    const handleToggleTodo = async () => {
+        setToggling(true);
+        try {
+            await onToggleTodo();
+            // 等待 API 完成后重新检查状态
+            await checkStatus();
+        } finally {
+            setToggling(false);
+        }
+    };
+
     if (loading) return null;
 
     return (
         <div className="favorite-todo-indicator">
             <button
                 className={`indicator-btn ${isFavorited ? 'active' : ''}`}
-                onClick={() => {
-                    onToggleFavorite();
-                    setIsFavorited(!isFavorited);
-                }}
+                onClick={handleToggleFavorite}
+                disabled={toggling}
                 title={isFavorited ? '取消收藏' : '收藏'}
             >
-                {isFavorited ? '⭐' : '☆'}
+                <span>{isFavorited ? '⭐' : '☆'}</span>
+                <span>收藏</span>
             </button>
             <button
                 className={`indicator-btn ${isTodo ? 'active' : ''}`}
-                onClick={() => {
-                    onToggleTodo();
-                    setIsTodo(!isTodo);
-                }}
+                onClick={handleToggleTodo}
+                disabled={toggling}
                 title={isTodo ? '从待办移除' : '添加到待办'}
             >
-                {isTodo ? '📋' : '📝'}
+                <span>{isTodo ? '📋' : '📝'}</span>
+                <span>待办</span>
             </button>
         </div>
     );

@@ -502,7 +502,7 @@ export default function PostDetailPage({ params }) {
             <Header />
             <main className="container">
                 {/* 帖子标题 */}
-                <div style={{ marginBottom: '0' }}>
+                <div className="post-detail-header" style={{ marginBottom: '0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
                             {post.title}
@@ -518,65 +518,47 @@ export default function PostDetailPage({ params }) {
                                 }}>📌 置顶</span>
                             ) : null}
                         </h1>
-                        <FavoriteTodoIndicator
-                            contentType="post"
-                            postId={id}
-                            onToggleFavorite={async () => {
-                                try {
-                                    const res = await fetch('/api/favorites', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ contentType: 'post', postId: id })
-                                    });
-                                    if (res.ok) {
-                                        alert('收藏成功！');
-                                    } else {
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <FavoriteTodoIndicator
+                                contentType="post"
+                                postId={id}
+                                onToggleFavorite={async () => {
+                                    try {
+                                        const res = await fetch('/api/favorites', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ contentType: 'post', postId: id })
+                                        });
                                         const data = await res.json();
-                                        if (data.error?.includes('已存在')) {
-                                            // 取消收藏
-                                            const checkRes = await fetch(`/api/favorites/check?contentType=post&postId=${id}`);
-                                            const checkData = await checkRes.json();
-                                            if (checkData.isFavorited) {
-                                                // 需要先获取收藏ID
-                                                const listRes = await fetch('/api/favorites?contentType=post&postId=' + id);
-                                                const listData = await listRes.json();
-                                                if (listData.favorites?.length > 0) {
-                                                    await fetch(`/api/favorites/${listData.favorites[0].id}`, { method: 'DELETE' });
-                                                    alert('已取消收藏');
-                                                }
-                                            }
+                                        if (res.ok) {
+                                            alert(data.message);
                                         } else {
                                             alert(data.error || '操作失败');
                                         }
+                                    } catch (error) {
+                                        alert('操作失败');
                                     }
-                                } catch (error) {
-                                    alert('操作失败');
-                                }
-                            }}
-                            onToggleTodo={async () => {
-                                try {
-                                    const res = await fetch('/api/todos', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ contentType: 'post', postId: id })
-                                    });
-                                    if (res.ok) {
-                                        alert('已添加到待办！');
-                                    } else {
+                                }}
+                                onToggleTodo={async () => {
+                                    try {
+                                        const res = await fetch('/api/todos', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ contentType: 'post', postId: id })
+                                        });
                                         const data = await res.json();
-                                        if (data.error?.includes('已存在')) {
-                                            alert('已经在待办列表中了');
+                                        if (res.ok) {
+                                            alert(data.message);
                                         } else {
                                             alert(data.error || '操作失败');
                                         }
+                                    } catch (error) {
+                                        alert('操作失败');
                                     }
-                                } catch (error) {
-                                    alert('操作失败');
-                                }
-                            }}
-                        />
-                        {user && user.id === post.author_id && (
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                                }}
+                            />
+                            {user && user.id === post.author_id && (
+                                <>
                                 <button
                                     className="btn btn-sm"
                                     style={{
@@ -626,8 +608,9 @@ export default function PostDetailPage({ params }) {
                                 >
                                     🗑️ 删除帖子
                                 </button>
-                            </div>
-                        )}
+                                </>
+                            )}
+                        </div>
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
                         👤 {post.author_name} · 📅 {formatDate(post.created_at)}
