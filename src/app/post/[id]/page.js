@@ -36,6 +36,7 @@ export default function PostDetailPage({ params }) {
     const [editCommentContent, setEditCommentContent] = useState('');
     const [commentFilter, setCommentFilter] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('free');
+    const [editingCategoryCommentId, setEditingCategoryCommentId] = useState(null);
     const [isElectron, setIsElectron] = useState(false);
     const [showAddLinkForm, setShowAddLinkForm] = useState(false);
     const [newLinkTitle, setNewLinkTitle] = useState('');
@@ -306,6 +307,26 @@ export default function PostDetailPage({ params }) {
         }
     };
 
+    const handleCategoryChange = async (commentId, newCategory) => {
+        try {
+            const res = await fetch(`/api/posts/${id}/comments`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ commentId, category: newCategory })
+            });
+            if (res.ok) {
+                setEditingCategoryCommentId(null);
+                fetchComments();
+            } else {
+                const data = await res.json();
+                alert(data.error || '修改标签失败');
+            }
+        } catch (error) {
+            console.error('Failed to change category:', error);
+            alert('修改标签失败，请重试');
+        }
+    };
+
     const formatDate = (dateStr) => {
         const date = new Date(dateStr + 'Z'); // 确保解析为UTC时间
         return date.toLocaleDateString('zh-CN', {
@@ -470,6 +491,54 @@ export default function PostDetailPage({ params }) {
                         <span className="label desktop-only">回复</span>
                     </button>
                 )}
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <button
+                        className={`comment-action ${editingCategoryCommentId === comment.id ? 'active' : ''}`}
+                        onClick={() => {
+                            if (user && user.id === comment.author_id) {
+                                setEditingCategoryCommentId(editingCategoryCommentId === comment.id ? null : comment.id);
+                            }
+                        }}
+                        title={user && user.id === comment.author_id ? '修改标签' : `标签: ${comment.category === 'free' ? '自由' : comment.category}`}
+                    >
+                        <span className="emoji">🏷️</span>
+                        <span className="label desktop-only">{comment.category === 'free' ? '自由' : comment.category}</span>
+                    </button>
+                    {editingCategoryCommentId === comment.id && (
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: '0',
+                            marginBottom: '8px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '8px',
+                            minWidth: '120px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            zIndex: 10
+                        }}>
+                            <div style={{ marginBottom: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>选择标签:</div>
+                            {post.links?.map((link) => (
+                                <button
+                                    key={link.id}
+                                    className={`btn btn-sm ${comment.category === link.title ? 'btn-primary' : 'btn-ghost'}`}
+                                    style={{ width: '100%', marginBottom: '4px', justifyContent: 'flex-start' }}
+                                    onClick={() => handleCategoryChange(comment.id, link.title)}
+                                >
+                                    {link.title}
+                                </button>
+                            ))}
+                            <button
+                                className={`btn btn-sm ${comment.category === 'free' ? 'btn-primary' : 'btn-ghost'}`}
+                                style={{ width: '100%', marginBottom: '4px', justifyContent: 'flex-start' }}
+                                onClick={() => handleCategoryChange(comment.id, 'free')}
+                            >
+                                自由
+                            </button>
+                        </div>
+                    )}
+                </div>
                 {user && user.id === comment.author_id && editingCommentId !== comment.id && (
                     <>
                         <button

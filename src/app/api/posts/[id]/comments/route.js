@@ -51,7 +51,7 @@ export async function POST(request, { params }) {
     }
 }
 
-// 反应（点赞/质疑）
+// 反应（点赞/质疑）和标签更新
 export async function PATCH(request, { params }) {
     try {
         const session = await getSessionFromCookies(await cookies());
@@ -60,8 +60,22 @@ export async function PATCH(request, { params }) {
             return NextResponse.json({ error: '请先登录' }, { status: 401 });
         }
 
-        const { commentId, reactionType, action } = await request.json();
+        const { commentId, reactionType, action, category } = await request.json();
 
+        // 处理标签更新
+        if (category) {
+            const comment = commentQueries.findById(commentId);
+            if (!comment) {
+                return NextResponse.json({ error: '评论不存在' }, { status: 404 });
+            }
+            if (comment.author_id !== session.user.id) {
+                return NextResponse.json({ error: '只能修改自己评论的标签' }, { status: 403 });
+            }
+            commentQueries.updateCategory(commentId, session.user.id, category);
+            return NextResponse.json({ message: '标签修改成功' });
+        }
+
+        // 处理反应（点赞/质疑）
         if (!['like', 'doubt'].includes(reactionType)) {
             return NextResponse.json({ error: '无效的反应类型' }, { status: 400 });
         }

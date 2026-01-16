@@ -313,6 +313,12 @@ export const commentQueries = {
         // Then delete the comment (only if author matches)
         const stmt = db.prepare('DELETE FROM comments WHERE id = ? AND author_id = ?');
         return stmt.run(id, authorId);
+    },
+
+    updateCategory: (id, authorId, category) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE comments SET category = ? WHERE id = ? AND author_id = ?');
+        return stmt.run(category, id, authorId);
     }
 };
 
