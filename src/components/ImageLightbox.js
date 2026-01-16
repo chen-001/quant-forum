@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 
-export default function ImageLightbox({ isOpen, image, onClose }) {
+export default function ImageLightbox({ isOpen, image, postId, onClose, onFavorite, onTodo, user }) {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
     const [scale, setScale] = useState(1);
@@ -184,38 +184,64 @@ export default function ImageLightbox({ isOpen, image, onClose }) {
                         {image.alt}
                     </div>
                 )}
-
-                {imageLoaded && !imageError && (
-                    <div className="image-lightbox-controls">
-                        <button
-                            className="image-lightbox-zoom-btn"
-                            onClick={handleZoomOut}
-                            aria-label="缩小"
-                            disabled={scale <= 0.25}
-                        >
-                            −
-                        </button>
-                        <span className="image-lightbox-zoom-level">
-                            {Math.round(scale * 100)}%
-                        </span>
-                        <button
-                            className="image-lightbox-zoom-btn"
-                            onClick={handleZoomIn}
-                            aria-label="放大"
-                            disabled={scale >= 4}
-                        >
-                            +
-                        </button>
-                        <button
-                            className="image-lightbox-zoom-btn"
-                            onClick={resetZoom}
-                            aria-label="重置"
-                        >
-                            ↺
-                        </button>
-                    </div>
-                )}
             </div>
+
+            {imageLoaded && !imageError && (
+                <div className="image-lightbox-controls">
+                    <button
+                        className="image-lightbox-zoom-btn"
+                        onClick={handleZoomOut}
+                        aria-label="缩小"
+                        disabled={scale <= 0.25}
+                    >
+                        −
+                    </button>
+                    <span className="image-lightbox-zoom-level">
+                        {Math.round(scale * 100)}%
+                    </span>
+                    <button
+                        className="image-lightbox-zoom-btn"
+                        onClick={handleZoomIn}
+                        aria-label="放大"
+                        disabled={scale >= 4}
+                    >
+                        +
+                    </button>
+                    <button
+                        className="image-lightbox-zoom-btn"
+                        onClick={resetZoom}
+                        aria-label="重置"
+                    >
+                        ↺
+                    </button>
+                    {user && (
+                        <>
+                            <button
+                                className="image-lightbox-zoom-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onFavorite) onFavorite(image?.src);
+                                }}
+                                aria-label="收藏"
+                                title="收藏"
+                            >
+                                ☆
+                            </button>
+                            <button
+                                className="image-lightbox-zoom-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onTodo) onTodo(image?.src);
+                                }}
+                                aria-label="添加到待办"
+                                title="添加到待办"
+                            >
+                                📋
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

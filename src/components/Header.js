@@ -49,6 +49,12 @@ export default function Header() {
                         <Link href="/post/new" className="btn btn-primary">
                             ✏️ 发帖
                         </Link>
+                        <Link href="/favorites" className="btn btn-ghost">
+                            ⭐ 收藏
+                        </Link>
+                        <Link href="/todos" className="btn btn-ghost">
+                            📋 待办
+                        </Link>
                         <div className="user-info">
                             <span>👤 {user.username}</span>
                         </div>

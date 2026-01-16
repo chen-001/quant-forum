@@ -7,6 +7,8 @@ import MarkdownRenderer, { MarkdownEditor } from '@/components/MarkdownRenderer'
 import RatingPanel from '@/components/RatingPanel';
 import TableEditor from '@/components/TableEditor';
 import InteractiveContent from '@/components/InteractiveContent';
+import InteractiveMarkdownRenderer from '@/components/InteractiveMarkdownRenderer';
+import FavoriteTodoIndicator from '@/components/FavoriteTodoIndicator';
 
 const MAX_OPEN_FRAMES = 4;
 
@@ -433,7 +435,13 @@ export default function PostDetailPage({ params }) {
                 </div>
             ) : (
                 <div className="comment-content">
-                    <MarkdownRenderer content={comment.content} />
+                    <InteractiveMarkdownRenderer
+                        contentType="comment"
+                        postId={id}
+                        commentId={comment.id.toString()}
+                        content={comment.content}
+                        user={user}
+                    />
                 </div>
             )}
             <div className="comment-actions">
@@ -505,6 +513,63 @@ export default function PostDetailPage({ params }) {
                                 }}>📌 置顶</span>
                             ) : null}
                         </h1>
+                        <FavoriteTodoIndicator
+                            contentType="post"
+                            postId={id}
+                            onToggleFavorite={async () => {
+                                try {
+                                    const res = await fetch('/api/favorites', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ contentType: 'post', postId: id })
+                                    });
+                                    if (res.ok) {
+                                        alert('收藏成功！');
+                                    } else {
+                                        const data = await res.json();
+                                        if (data.error?.includes('已存在')) {
+                                            // 取消收藏
+                                            const checkRes = await fetch(`/api/favorites/check?contentType=post&postId=${id}`);
+                                            const checkData = await checkRes.json();
+                                            if (checkData.isFavorited) {
+                                                // 需要先获取收藏ID
+                                                const listRes = await fetch('/api/favorites?contentType=post&postId=' + id);
+                                                const listData = await listRes.json();
+                                                if (listData.favorites?.length > 0) {
+                                                    await fetch(`/api/favorites/${listData.favorites[0].id}`, { method: 'DELETE' });
+                                                    alert('已取消收藏');
+                                                }
+                                            }
+                                        } else {
+                                            alert(data.error || '操作失败');
+                                        }
+                                    }
+                                } catch (error) {
+                                    alert('操作失败');
+                                }
+                            }}
+                            onToggleTodo={async () => {
+                                try {
+                                    const res = await fetch('/api/todos', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ contentType: 'post', postId: id })
+                                    });
+                                    if (res.ok) {
+                                        alert('已添加到待办！');
+                                    } else {
+                                        const data = await res.json();
+                                        if (data.error?.includes('已存在')) {
+                                            alert('已经在待办列表中了');
+                                        } else {
+                                            alert(data.error || '操作失败');
+                                        }
+                                    }
+                                } catch (error) {
+                                    alert('操作失败');
+                                }
+                            }}
+                        />
                         {user && user.id === post.author_id && (
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
@@ -900,7 +965,12 @@ export default function PostDetailPage({ params }) {
                             ) : (
                                 <div style={{ color: 'var(--text-secondary)' }}>
                                     {ideasContent ? (
-                                        <MarkdownRenderer content={ideasContent} />
+                                        <InteractiveMarkdownRenderer
+                                            contentType="idea"
+                                            postId={id}
+                                            content={ideasContent}
+                                            user={user}
+                                        />
                                     ) : (
                                         <div className="empty-state" style={{ padding: '32px' }}>
                                             <p>暂无内容，{user ? '点击编辑添加想法' : '登录后可以编辑'}</p>
@@ -955,7 +1025,13 @@ export default function PostDetailPage({ params }) {
                                             <span>👤 {result.author_name}</span>
                                             <span>📅 {formatDate(result.created_at)}</span>
                                         </div>
-                                        <MarkdownRenderer content={result.content} />
+                                        <InteractiveMarkdownRenderer
+                                            contentType="result"
+                                            postId={id}
+                                            resultId={result.id.toString()}
+                                            content={result.content}
+                                            user={user}
+                                        />
                                     </div>
                                 ))}
                             </div>

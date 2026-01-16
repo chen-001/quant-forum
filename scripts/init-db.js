@@ -178,6 +178,76 @@ db.exec(`
   );
 `);
 
+// 创建收藏表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content_type TEXT NOT NULL CHECK(content_type IN ('post', 'comment', 'result', 'idea', 'text_selection', 'image')),
+    content_id INTEGER,
+    post_id INTEGER NOT NULL,
+    comment_id INTEGER,
+    result_id INTEGER,
+    text_data TEXT,
+    image_url TEXT,
+    line_index INTEGER,
+    start_offset INTEGER,
+    end_offset INTEGER,
+    visibility TEXT DEFAULT 'public' CHECK(visibility IN ('public', 'private')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (result_id) REFERENCES results(id) ON DELETE CASCADE
+  );
+`);
+
+// 创建收藏表索引
+db.exec(`CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_favorites_post_id ON favorites(post_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_favorites_content_type ON favorites(content_type)`);
+
+// 创建待办表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content_type TEXT NOT NULL CHECK(content_type IN ('post', 'comment', 'result', 'idea', 'text_selection', 'image')),
+    content_id INTEGER,
+    post_id INTEGER NOT NULL,
+    comment_id INTEGER,
+    result_id INTEGER,
+    text_data TEXT,
+    image_url TEXT,
+    line_index INTEGER,
+    start_offset INTEGER,
+    end_offset INTEGER,
+    note TEXT,
+    is_completed INTEGER DEFAULT 0,
+    completed_at DATETIME,
+    visibility TEXT DEFAULT 'public' CHECK(visibility IN ('public', 'private')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (result_id) REFERENCES results(id) ON DELETE CASCADE
+  );
+`);
+
+// 创建待办表索引
+db.exec(`CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_todos_post_id ON todos(post_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_todos_is_completed ON todos(is_completed)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_todos_content_type ON todos(content_type)`);
+
+// 数据库迁移：为现有表添加 visibility 字段
+// 为 favorites 表添加 visibility 字段
+addColumnIfNotExists('favorites', 'visibility', "TEXT DEFAULT 'public' CHECK(visibility IN ('public', 'private'))");
+
+// 为 todos 表添加 visibility 字段
+addColumnIfNotExists('todos', 'visibility', "TEXT DEFAULT 'public' CHECK(visibility IN ('public', 'private'))");
+
 console.log('数据库表创建成功！');
 db.close();
 

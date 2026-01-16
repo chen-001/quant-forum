@@ -145,6 +145,15 @@ a:hover {
   border-color: var(--border-light);
 }
 
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  opacity: 0.9;
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
@@ -749,6 +758,19 @@ a:hover {
   margin-top: 1vh;
 }
 
+.ideas-content img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.ideas-content img:hover {
+  opacity: 0.9;
+}
+
 /* 成果记录区 */
 .results-section {
   background: var(--bg-card);
@@ -756,6 +778,19 @@ a:hover {
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   margin-top: 1vh;
+}
+
+.results-content img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.results-content img:hover {
+  opacity: 0.9;
 }
 
 .results-header {
@@ -954,6 +989,8 @@ a:hover {
 
 .markdown-content img {
   max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: opacity var(--transition);
@@ -1763,6 +1800,16 @@ a:hover {
   cursor: not-allowed;
 }
 
+.image-lightbox-zoom-btn.copy-success {
+  background: rgba(76, 175, 80, 0.5);
+  animation: pulse 0.3s ease;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
 .image-lightbox-zoom-level {
   color: white;
   font-size: 14px;
@@ -1825,6 +1872,365 @@ a:hover {
   text-align: center;
   max-width: 90vw;
   opacity: 0.9;
+}
+
+/* ==================== 收藏和待办功能样式 ==================== */
+
+/* 右键菜单样式 */
+.context-menu {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  min-width: 150px;
+  z-index: 1000;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-size: 14px;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item:active {
+  background: var(--bg-active);
+}
+
+/* 收藏/待办状态指示器 */
+.favorite-todo-indicator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.indicator-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  padding: 4px;
+  line-height: 1;
+}
+
+.indicator-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.indicator-btn.active {
+  opacity: 1;
+}
+
+/* 收藏页面样式 */
+.favorites-page,
+.todos-page {
+  padding: var(--spacing-xl) 0;
+  min-height: calc(100vh - 120px);
+}
+
+.favorites-header,
+.todos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.favorites-header h1,
+.todos-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
+/* 范围标签页样式 */
+.scope-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: var(--radius-md);
+}
+
+.scope-tabs button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.scope-tabs button:hover {
+  color: var(--text-primary);
+}
+
+.scope-tabs button.active {
+  background: var(--primary);
+  color: white;
+}
+
+.favorites-filter,
+.todos-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.favorites-filter button,
+.todos-filter button {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.favorites-filter button:hover,
+.todos-filter button:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-hover);
+}
+
+.favorites-filter button.active,
+.todos-filter button.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.favorites-list,
+.todos-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.favorite-item,
+.todo-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  transition: box-shadow 0.15s ease;
+}
+
+.favorite-item:hover,
+.todo-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.todo-item {
+  align-items: stretch;
+}
+
+.todo-item.completed {
+  opacity: 0.6;
+}
+
+.todo-item.completed .todo-post-title,
+.todo-item.completed .todo-post-title h3,
+.todo-item.completed .todo-post-title h4 {
+  text-decoration: line-through;
+}
+
+.favorite-content,
+.todo-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.favorite-post-title,
+.todo-post-title {
+  text-decoration: none;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  display: block;
+}
+
+.favorite-post-title:hover,
+.todo-post-title:hover {
+  color: var(--primary);
+}
+
+.favorite-post-title h3,
+.todo-post-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.favorite-post-title h4,
+.todo-post-title h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.favorite-meta,
+.todo-meta {
+  display: flex;
+  gap: var(--spacing-md);
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.favorite-text-selection,
+.todo-text-selection {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary);
+  margin: var(--spacing-sm) 0;
+}
+
+.favorite-text-selection p,
+.todo-text-selection p {
+  color: var(--text-primary);
+  font-style: italic;
+  margin: 0;
+}
+
+.line-info {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.favorite-comment,
+.favorite-result,
+.todo-comment,
+.todo-result {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.todo-checkbox {
+  margin-right: var(--spacing-md);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.todo-checkbox input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  border-radius: 4px;
+}
+
+.todo-checkbox input[type="checkbox"]:hover {
+  transform: scale(1.1);
+}
+
+.todo-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.todo-note {
+  margin-top: var(--spacing-sm);
+}
+
+.note-content {
+  background: var(--bg-tertiary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.todo-note-edit {
+  margin-top: var(--spacing-sm);
+}
+
+.todo-completed-info {
+  color: var(--success);
+  font-size: 13px;
+  margin-top: var(--spacing-sm);
+}
+
+.favorite-image,
+.todo-image {
+  margin: var(--spacing-sm) 0;
+}
+
+.favorite-image img,
+.todo-image img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .favorites-header,
+  .todos-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .favorites-filter,
+  .todos-filter {
+    width: 100%;
+  }
+
+  .favorites-filter button,
+  .todos-filter button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .favorite-item,
+  .todo-item {
+    flex-direction: column;
+  }
+
+  .todo-actions {
+    margin-left: 0;
+    margin-top: var(--spacing-sm);
+  }
 }
 
 /* 代码块内禁用选中文本高亮功能 */

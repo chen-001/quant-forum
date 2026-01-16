@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
 import ImageLightbox from './ImageLightbox';
+import ContextMenu from './ContextMenu';
 
 /**
  * 识别内容中的代码块
@@ -127,6 +128,7 @@ export default function InteractiveContent({ content, postId, user }) {
     const [deleteConfirm, setDeleteConfirm] = useState({ show: false, highlightId: null });
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
+    const [contextMenu, setContextMenu] = useState(null);
     const contentRef = useRef(null);
 
     // 将内容分行处理
@@ -274,6 +276,195 @@ export default function InteractiveContent({ content, postId, user }) {
         }
     };
 
+    // 右键菜单处理
+    const handleContextMenu = (e, type, data) => {
+        // 如果是图片，不阻止默认行为，显示浏览器原生右键菜单
+        if (e.target.tagName === 'IMG' || e.target.closest('img')) {
+            return;
+        }
+
+        e.preventDefault();
+        if (!user) return;
+
+        setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            type,
+            data
+        });
+    };
+
+    const handleFavorite = async (imageUrl) => {
+        // 灯箱中的收藏（接收图片URL）
+        if (imageUrl) {
+            try {
+                const res = await fetch('/api/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contentType: 'image',
+                        postId,
+                        imageUrl
+                    })
+                });
+
+                if (res.ok) {
+                    alert('收藏成功！');
+                } else {
+                    const data = await res.json();
+                    alert(data.error || '收藏失败');
+                }
+            } catch (error) {
+                console.error('Failed to favorite:', error);
+                alert('收藏失败');
+            }
+            return;
+        }
+
+        // 右键菜单的收藏（文本选择）
+        if (!contextMenu) return;
+
+        try {
+            const { type, data } = contextMenu;
+            let body = {};
+
+            if (type === 'text') {
+                body = {
+                    contentType: 'text_selection',
+                    postId,
+                    textData: data.text,
+                    lineIndex: data.lineIndex,
+                    startOffset: data.startOffset || 0,
+                    endOffset: data.endOffset || data.text?.length || 0
+                };
+            }
+
+            const res = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                alert('收藏成功！');
+            } else {
+                const data = await res.json();
+                alert(data.error || '收藏失败');
+            }
+        } catch (error) {
+            console.error('Failed to favorite:', error);
+            alert('收藏失败');
+        }
+    };
+
+    const handleTodo = async (imageUrl) => {
+        // 灯箱中的待办（接收图片URL）
+        if (imageUrl) {
+            try {
+                const res = await fetch('/api/todos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contentType: 'image',
+                        postId,
+                        imageUrl
+                    })
+                });
+
+                if (res.ok) {
+                    alert('已添加到待办！');
+                } else {
+                    const data = await res.json();
+                    alert(data.error || '添加失败');
+                }
+            } catch (error) {
+                console.error('Failed to add todo:', error);
+                alert('添加失败');
+            }
+            return;
+        }
+
+        // 右键菜单的待办（文本选择）
+        if (!contextMenu) return;
+
+        try {
+            const { type, data } = contextMenu;
+            let body = {};
+
+            if (type === 'text') {
+                body = {
+                    contentType: 'text_selection',
+                    postId,
+                    textData: data.text,
+                    lineIndex: data.lineIndex,
+                    startOffset: data.startOffset || 0,
+                    endOffset: data.endOffset || data.text?.length || 0
+                };
+            }
+
+            const res = await fetch('/api/todos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                alert('已添加到待办！');
+            } else {
+                const data = await res.json();
+                alert(data.error || '添加失败');
+            }
+        } catch (error) {
+            console.error('Failed to add todo:', error);
+            alert('添加失败');
+        }
+    };
+
+    const handleCopy = async () => {
+        if (!contextMenu) return;
+
+        const { type, data } = contextMenu;
+
+        // 复制文本的辅助函数
+        const copyToClipboard = async (text) => {
+            // 方法1：使用现代 Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (e) {
+                    console.warn('Clipboard API failed, trying fallback:', e);
+                }
+            }
+
+            // 方法2：使用传统 execCommand 方法
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                return successful;
+            } catch (e) {
+                console.error('execCommand failed:', e);
+                return false;
+            }
+        };
+
+        try {
+            if (type === 'text') {
+                await copyToClipboard(data.text);
+            }
+        } catch (error) {
+            console.error('Failed to copy:', error);
+        }
+    };
+
     // 应用高亮到文本
     const applyHighlights = (text, lineHighlights) => {
         if (!lineHighlights || lineHighlights.length === 0) {
@@ -344,6 +535,7 @@ export default function InteractiveContent({ content, postId, user }) {
         }
     };
 
+
     const confirmDeleteHighlight = () => {
         if (deleteConfirm.highlightId) {
             handleRemoveHighlight(deleteConfirm.highlightId);
@@ -377,6 +569,10 @@ export default function InteractiveContent({ content, postId, user }) {
                     className={`interactive-line ${hasComments ? 'has-comments' : ''}`}
                     data-line-index={index}
                     onMouseUp={() => handleTextSelection(index)}
+                    onContextMenu={(e) => handleContextMenu(e, 'text', {
+                        text: line,
+                        lineIndex: index
+                    })}
                 >
                     <span
                         className="line-content"
@@ -605,10 +801,26 @@ export default function InteractiveContent({ content, postId, user }) {
                 })}
             </div>
 
+            {/* 右键菜单 */}
+            {contextMenu && (
+                <ContextMenu
+                    position={contextMenu}
+                    onClose={() => setContextMenu(null)}
+                    onFavorite={handleFavorite}
+                    onTodo={handleTodo}
+                    onCopy={handleCopy}
+                    user={user}
+                />
+            )}
+
             <ImageLightbox
                 isOpen={lightboxOpen}
                 image={currentImage}
+                postId={postId}
                 onClose={() => setLightboxOpen(false)}
+                onFavorite={handleFavorite}
+                onTodo={handleTodo}
+                user={user}
             />
         </div>
     );

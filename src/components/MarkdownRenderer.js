@@ -43,7 +43,7 @@ function renderLatex(text) {
     return text;
 }
 
-export default function MarkdownRenderer({ content }) {
+export default function MarkdownRenderer({ content, postId, onFavorite, onTodo, user }) {
     const [html, setHtml] = useState('');
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
@@ -91,7 +91,11 @@ export default function MarkdownRenderer({ content }) {
             <ImageLightbox
                 isOpen={lightboxOpen}
                 image={currentImage}
+                postId={postId}
                 onClose={() => setLightboxOpen(false)}
+                onFavorite={onFavorite}
+                onTodo={onTodo}
+                user={user}
             />
         </>
     );

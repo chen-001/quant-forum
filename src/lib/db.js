@@ -470,3 +470,245 @@ export const ideaQueries = {
         return stmt.run(postId, content, editorId);
     }
 };
+
+// 收藏相关操作
+export const favoriteQueries = {
+    create: ({ userId, contentType, postId, commentId, resultId, textData, imageUrl, lineIndex, startOffset, endOffset, visibility = 'public' }) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO favorites (
+                user_id, content_type, content_id, post_id, comment_id, result_id,
+                text_data, image_url, line_index, start_offset, end_offset, visibility
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(userId, contentType, commentId || resultId || postId, postId, commentId, resultId, textData, imageUrl, lineIndex, startOffset, endOffset, visibility);
+    },
+
+    findByUserId: (userId, contentType = null, postId = null, scope = 'mine') => {
+        const db = getDb();
+        let query = `
+            SELECT f.*,
+                p.title as post_title,
+                p.author_id as post_author_id,
+                u.username as post_author_name,
+                c.content as comment_content,
+                c.author_id as comment_author_id,
+                cu.username as comment_author_name,
+                r.content as result_content,
+                r.author_id as result_author_id,
+                ru.username as result_author_name,
+                fu.username as favorite_author_name,
+                fu.id as favorite_author_id
+            FROM favorites f
+            JOIN posts p ON f.post_id = p.id
+            JOIN users u ON p.author_id = u.id
+            LEFT JOIN comments c ON f.comment_id = c.id
+            LEFT JOIN users cu ON c.author_id = cu.id
+            LEFT JOIN results r ON f.result_id = r.id
+            LEFT JOIN users ru ON r.author_id = ru.id
+            LEFT JOIN users fu ON f.user_id = fu.id
+            WHERE 1=1
+        `;
+
+        const params = [];
+
+        // 根据 scope 参数决定查询范围
+        if (scope === 'mine') {
+            query += ' AND f.user_id = ?';
+            params.push(userId);
+        } else if (scope === 'all') {
+            // 查询所有公开的收藏 + 当前用户的所有收藏
+            query += ' AND (f.visibility = \'public\' OR f.user_id = ?)';
+            params.push(userId);
+        }
+
+        if (contentType) {
+            query += ' AND f.content_type = ?';
+            params.push(contentType);
+        }
+
+        if (postId) {
+            query += ' AND f.post_id = ?';
+            params.push(postId);
+        }
+
+        query += ' ORDER BY f.created_at DESC';
+
+        const stmt = db.prepare(query);
+        return stmt.all(...params);
+    },
+
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM favorites WHERE id = ?');
+        return stmt.get(id);
+    },
+
+    delete: (id, userId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM favorites WHERE id = ? AND user_id = ?');
+        return stmt.run(id, userId);
+    },
+
+    updateVisibility: (id, userId, visibility) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE favorites SET visibility = ? WHERE id = ? AND user_id = ?');
+        return stmt.run(visibility, id, userId);
+    },
+
+    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+        const db = getDb();
+        let query = 'SELECT id FROM favorites WHERE user_id = ? AND content_type = ? AND post_id = ?';
+        let params = [userId, contentType, postId];
+
+        if (commentId) {
+            query += ' AND comment_id = ?';
+            params.push(commentId);
+        }
+
+        if (resultId) {
+            query += ' AND result_id = ?';
+            params.push(resultId);
+        }
+
+        const stmt = db.prepare(query);
+        const result = stmt.get(...params);
+        return !!result;
+    }
+};
+
+// 待办相关操作
+export const todoQueries = {
+    create: ({ userId, contentType, postId, commentId, resultId, textData, imageUrl, lineIndex, startOffset, endOffset, note, visibility = 'public' }) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO todos (
+                user_id, content_type, content_id, post_id, comment_id, result_id,
+                text_data, image_url, line_index, start_offset, end_offset, note, visibility
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(userId, contentType, commentId || resultId || postId, postId, commentId, resultId, textData, imageUrl, lineIndex, startOffset, endOffset, note, visibility);
+    },
+
+    findByUserId: (userId, contentType = null, postId = null, isCompleted = null, scope = 'mine') => {
+        const db = getDb();
+        let query = `
+            SELECT t.*,
+                p.title as post_title,
+                p.author_id as post_author_id,
+                u.username as post_author_name,
+                c.content as comment_content,
+                c.author_id as comment_author_id,
+                cu.username as comment_author_name,
+                r.content as result_content,
+                r.author_id as result_author_id,
+                ru.username as result_author_name,
+                tu.username as todo_author_name,
+                tu.id as todo_author_id
+            FROM todos t
+            JOIN posts p ON t.post_id = p.id
+            JOIN users u ON p.author_id = u.id
+            LEFT JOIN comments c ON t.comment_id = c.id
+            LEFT JOIN users cu ON c.author_id = cu.id
+            LEFT JOIN results r ON t.result_id = r.id
+            LEFT JOIN users ru ON r.author_id = ru.id
+            LEFT JOIN users tu ON t.user_id = tu.id
+            WHERE 1=1
+        `;
+
+        const params = [];
+
+        // 根据 scope 参数决定查询范围
+        if (scope === 'mine') {
+            query += ' AND t.user_id = ?';
+            params.push(userId);
+        } else if (scope === 'all') {
+            // 查询所有公开的待办 + 当前用户的所有待办
+            query += ' AND (t.visibility = \'public\' OR t.user_id = ?)';
+            params.push(userId);
+        }
+
+        if (contentType) {
+            query += ' AND t.content_type = ?';
+            params.push(contentType);
+        }
+
+        if (postId) {
+            query += ' AND t.post_id = ?';
+            params.push(postId);
+        }
+
+        if (isCompleted !== null) {
+            query += ' AND t.is_completed = ?';
+            params.push(isCompleted ? 1 : 0);
+        }
+
+        query += ' ORDER BY t.is_completed ASC, t.created_at DESC';
+
+        const stmt = db.prepare(query);
+        return stmt.all(...params);
+    },
+
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM todos WHERE id = ?');
+        return stmt.get(id);
+    },
+
+    delete: (id, userId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM todos WHERE id = ? AND user_id = ?');
+        return stmt.run(id, userId);
+    },
+
+    updateCompleteStatus: (id, isCompleted) => {
+        const db = getDb();
+        if (isCompleted) {
+            const stmt = db.prepare(`
+                UPDATE todos
+                SET is_completed = 1, completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `);
+            return stmt.run(id);
+        } else {
+            const stmt = db.prepare(`
+                UPDATE todos
+                SET is_completed = 0, completed_at = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `);
+            return stmt.run(id);
+        }
+    },
+
+    updateNote: (id, note) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE todos SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+        return stmt.run(note, id);
+    },
+
+    updateVisibility: (id, userId, visibility) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE todos SET visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+        return stmt.run(visibility, id, userId);
+    },
+
+    checkIfExists: ({ userId, contentType, postId, commentId, resultId }) => {
+        const db = getDb();
+        let query = 'SELECT id FROM todos WHERE user_id = ? AND content_type = ? AND post_id = ?';
+        let params = [userId, contentType, postId];
+
+        if (commentId) {
+            query += ' AND comment_id = ?';
+            params.push(commentId);
+        }
+
+        if (resultId) {
+            query += ' AND result_id = ?';
+            params.push(resultId);
+        }
+
+        const stmt = db.prepare(query);
+        const result = stmt.get(...params);
+        return !!result;
+    }
+};
