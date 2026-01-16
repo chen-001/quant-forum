@@ -6,7 +6,7 @@
   "author": "Quant Forum Team",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev -p $PORT",
+    "dev": "dotenv -- next dev",
     "build": "next build",
     "start": "next start",
     "electron": "electron .",
@@ -29,6 +29,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "dotenv-cli": "^11.0.0",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },

@@ -130,6 +130,7 @@ export default function InteractiveContent({ content, postId, user }) {
     const [currentImage, setCurrentImage] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
     const contentRef = useRef(null);
+    const toolbarRef = useRef(null);
 
     // 将内容分行处理
     const lines = content ? content.split('\n') : [];
@@ -144,6 +145,35 @@ export default function InteractiveContent({ content, postId, user }) {
         fetchLineComments();
         fetchHighlights();
     }, [postId]);
+
+    // 监听全局点击事件，当点击在高亮工具栏外部时隐藏工具栏
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // 如果工具栏显示，且点击不在工具栏内，隐藏工具栏
+            if (showHighlightToolbar && toolbarRef.current && !toolbarRef.current.contains(event.target)) {
+                // 检查点击是否在内容区域内
+                const isInContentArea = contentRef.current?.contains(event.target);
+
+                // 如果点击在内容区域内，检查是否有文本选择
+                if (isInContentArea) {
+                    const selection = window.getSelection();
+                    if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+                        // 没有文本选择，隐藏工具栏
+                        setShowHighlightToolbar(false);
+                    }
+                } else {
+                    // 点击在内容区域外，隐藏工具栏
+                    setShowHighlightToolbar(false);
+                }
+            }
+        };
+
+        // 监听 document 的点击事件
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showHighlightToolbar]);
 
     const fetchLineComments = async () => {
         try {
@@ -714,6 +744,7 @@ export default function InteractiveContent({ content, postId, user }) {
             {/* 高亮颜色选择工具栏 */}
             {showHighlightToolbar && user && (
                 <div
+                    ref={toolbarRef}
                     className="highlight-toolbar"
                     style={{
                         position: 'fixed',
