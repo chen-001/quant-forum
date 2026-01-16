@@ -717,14 +717,14 @@ a:hover {
 
 .comment-actions {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
 }
 
 .comment-action {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 4px;
   padding: var(--spacing-xs) var(--spacing-sm);
   background: transparent;
   border: none;
@@ -733,6 +733,25 @@ a:hover {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all var(--transition);
+}
+
+/* 桌面版显示点赞、质疑数量 */
+.comment-action::after {
+  content: attr(data-count);
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.comment-action:not([data-count])::after {
+  content: none;
+}
+
+.comment-action .emoji {
+  font-size: 14px;
+}
+
+.comment-action .label {
+  font-size: 12px;
 }
 
 .comment-action:hover {
@@ -1085,13 +1104,248 @@ a:hover {
   }
 }
 
+/* 移动端抽屉菜单样式 */
+.navbar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 24px;
+  cursor: pointer;
+  transition: all var(--transition);
+  border-radius: var(--radius-md);
+}
+
+.navbar-toggle:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.mobile-drawer-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10001;
+  pointer-events: none;
+}
+
+.mobile-drawer-container * {
+  pointer-events: auto;
+}
+
+.mobile-drawer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  animation: slideInLeft 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.mobile-drawer-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mobile-drawer-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.mobile-drawer-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.mobile-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+}
+
+.mobile-drawer-user {
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: 16px;
+  text-align: center;
+}
+
+.mobile-drawer-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--spacing-md);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  margin-bottom: var(--spacing-sm);
+}
+
+.mobile-drawer-item:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+.mobile-drawer-logout {
+  color: var(--error);
+}
+
+.mobile-drawer-logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* 响应式显示控制 */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* 修复移动端页面宽度问题 */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   .navbar {
     padding: var(--spacing-md);
   }
 
+  .navbar-toggle {
+    display: flex;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: flex;
+  }
+
   .container {
     padding: var(--spacing-md);
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 修复帖子详情页移动端宽度 */
+  .post-detail {
+    padding-right: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 修复主内容区域宽度 */
+  .post-main {
+    padding: 0 var(--spacing-sm) var(--spacing-md) var(--spacing-sm);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 修复各个区块宽度 */
+  .preview-section,
+  .ideas-section,
+  .results-section,
+  .rating-section {
+    width: 100%;
+    max-width: 100%;
+    padding: var(--spacing-md);
+    box-sizing: border-box;
+    border-radius: var(--radius-md);
+  }
+
+  .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+  }
+
+  .preview-header > div {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* 修复链接芯片区域 */
+  .link-chips {
+    padding: var(--spacing-sm);
+    gap: var(--spacing-xs);
+  }
+
+  .link-chip {
+    font-size: 12px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  /* 表格区域移动端修复 */
+  .table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .posts-header {
@@ -1187,6 +1441,95 @@ a:hover {
   .post-sidebar {
     height: calc(100vh - 8vh);
     max-height: calc(100vh - 8vh);
+  }
+
+  /* 修复评论区域宽度 */
+  .comments-list {
+    padding: var(--spacing-sm);
+  }
+
+  .comment-item {
+    padding: var(--spacing-sm);
+  }
+
+  .comment-input-container {
+    padding: var(--spacing-sm);
+  }
+
+  /* 修复按钮和表单 */
+  .btn {
+    font-size: 13px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .results-header,
+  .rating-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .result-item {
+    padding: var(--spacing-sm);
+  }
+
+  /* 修复想法区 */
+  .ideas-content,
+  .results-content {
+    font-size: 14px;
+  }
+
+  /* 修复内联样式输入框 */
+  input[type="text"],
+  input[type="url"],
+  textarea {
+    font-size: 14px;
+  }
+
+  /* 修复交互内容区域 */
+  .interactive-content,
+  .interactive-lines,
+  .interactive-line,
+  .markdown-content {
+    width: 100%;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .interactive-line {
+    padding: 4px var(--spacing-xs);
+    font-size: 14px;
+  }
+
+  /* 修复图片在移动端的显示 */
+  .markdown-content img,
+  .ideas-content img,
+  .results-content img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 修复代码块在移动端的显示 */
+  .markdown-content pre {
+    overflow-x: auto;
+    font-size: 12px;
+  }
+
+  .markdown-content code {
+    font-size: 12px;
+    word-break: break-all;
+  }
+
+  /* 修复表格在移动端的显示 */
+  .code-block-line {
+    font-size: 12px;
+  }
+
+  /* 修复灯箱图片 */
+  .image-lightbox-content img {
+    max-width: 95vw;
+    max-height: 80vh;
   }
 }
 

@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import MobileDrawer from './MobileDrawer';
 
 export default function Header() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -41,7 +43,11 @@ export default function Header() {
                 🧠 AI因子讨论区
             </Link>
 
-            <div className="navbar-actions">
+            <button className="navbar-toggle mobile-only" onClick={() => setIsMenuOpen(true)}>
+                ☰
+            </button>
+
+            <div className="navbar-actions desktop-only">
                 {loading ? (
                     <div className="spinner" style={{ width: 20, height: 20 }}></div>
                 ) : user ? (
@@ -73,6 +79,13 @@ export default function Header() {
                     </>
                 )}
             </div>
+
+            <MobileDrawer
+                isOpen={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
+                user={user}
+                onLogout={handleLogout}
+            />
         </nav>
     );
 }

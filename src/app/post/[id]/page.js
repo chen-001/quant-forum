@@ -450,21 +450,24 @@ export default function PostDetailPage({ params }) {
                     onClick={() => user && handleReaction(comment.id, 'like')}
                     data-count={comment.likes_count}
                 >
-                    👍
+                    <span className="emoji">👍</span>
+                    <span className="label desktop-only">点赞</span>
                 </button>
                 <button
                     className={`comment-action ${userReactions.some(r => r.comment_id === comment.id && r.reaction_type === 'doubt') ? 'active' : ''}`}
                     onClick={() => user && handleReaction(comment.id, 'doubt')}
                     data-count={comment.doubts_count}
                 >
-                    🤔
+                    <span className="emoji">🤔</span>
+                    <span className="label desktop-only">质疑</span>
                 </button>
                 {user && (
                     <button
                         className="comment-action"
                         onClick={() => setReplyTo(comment)}
                     >
-                        💬
+                        <span className="emoji">💬</span>
+                        <span className="label desktop-only">回复</span>
                     </button>
                 )}
                 {user && user.id === comment.author_id && editingCommentId !== comment.id && (
@@ -476,14 +479,16 @@ export default function PostDetailPage({ params }) {
                                 setEditCommentContent(comment.content);
                             }}
                         >
-                            ✏️
+                            <span className="emoji">✏️</span>
+                            <span className="label desktop-only">编辑</span>
                         </button>
                         <button
                             className="comment-action"
                             style={{ color: 'var(--error)' }}
                             onClick={() => handleCommentDelete(comment.id)}
                         >
-                            🗑️
+                            <span className="emoji">🗑️</span>
+                            <span className="label desktop-only">删除</span>
                         </button>
                     </>
                 )}
