@@ -10,7 +10,7 @@ export default tool({
   async execute({ postId }) {
     const db = getDb();
     const stmt = db.query(`
-      SELECT pi.id, pi.post_id, pi.content, pi.updated_at,
+      SELECT pi.id, pi.post_id, pi.updated_at,
              u.username as last_editor_name,
              pit.content as text_content
       FROM post_ideas pi

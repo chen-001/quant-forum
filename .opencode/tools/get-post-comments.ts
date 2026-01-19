@@ -11,7 +11,7 @@ export default tool({
   async execute({ postId, limit }) {
     const db = getDb();
     const stmt = db.query(`
-      SELECT c.id, c.post_id, c.parent_id, c.content, c.author_id,
+      SELECT c.id, c.post_id, c.parent_id, c.author_id,
              u.username as author_name, ct.content as text_content,
              c.likes_count, c.doubts_count, c.created_at
       FROM comments c

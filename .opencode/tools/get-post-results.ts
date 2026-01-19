@@ -11,7 +11,7 @@ export default tool({
   async execute({ postId, limit }) {
     const db = getDb();
     const stmt = db.query(`
-      SELECT r.id, r.post_id, r.content, r.author_id, u.username as author_name,
+      SELECT r.id, r.post_id, r.author_id, u.username as author_name,
              rt.content as text_content, r.created_at
       FROM results r
       LEFT JOIN users u ON r.author_id = u.id
