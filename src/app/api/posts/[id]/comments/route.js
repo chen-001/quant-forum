@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { commentQueries } from '@/lib/db';
+import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取评论列表
 export async function GET(request, { params }) {
@@ -40,10 +41,16 @@ export async function POST(request, { params }) {
         }
 
         const result = commentQueries.create(id, session.user.id, content.trim(), parentId || null, category || 'free');
+        const commentId = result.lastInsertRowid;
+
+        // 如果内容包含图片，添加OCR任务
+        if (content.includes('![')) {
+            ocrTextQueries.scheduleOCR('comment', commentId, content);
+        }
 
         return NextResponse.json({
             message: '评论成功',
-            commentId: result.lastInsertRowid
+            commentId
         });
     } catch (error) {
         console.error('Create comment error:', error);

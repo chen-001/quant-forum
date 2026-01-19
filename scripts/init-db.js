@@ -251,6 +251,104 @@ addColumnIfNotExists('todos', 'visibility', "TEXT DEFAULT 'public' CHECK(visibil
 // 为 todos 表添加 transferred_from 字段（用于流转功能）
 addColumnIfNotExists('todos', 'transferred_from', 'INTEGER');
 
+// ========== OCR相关表 ==========
+
+// 帖子纯文字版表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS posts_text (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    ocr_status TEXT DEFAULT 'pending' CHECK(ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+    ocr_error TEXT,
+    ocr_processed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+  );
+`);
+
+// 评论纯文字版表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS comments_text (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comment_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    ocr_status TEXT DEFAULT 'pending' CHECK(ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+    ocr_error TEXT,
+    ocr_processed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+  );
+`);
+
+// 成果纯文字版表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS results_text (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    result_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    ocr_status TEXT DEFAULT 'pending' CHECK(ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+    ocr_error TEXT,
+    ocr_processed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (result_id) REFERENCES results(id) ON DELETE CASCADE
+  );
+`);
+
+// 想法区纯文字版表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_ideas_text (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    idea_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    ocr_status TEXT DEFAULT 'pending' CHECK(ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+    ocr_error TEXT,
+    ocr_processed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idea_id) REFERENCES post_ideas(id) ON DELETE CASCADE
+  );
+`);
+
+// 待办纯文字版表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS todos_text (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    todo_id INTEGER NOT NULL UNIQUE,
+    content TEXT NOT NULL,
+    ocr_status TEXT DEFAULT 'pending' CHECK(ocr_status IN ('pending', 'processing', 'completed', 'failed')),
+    ocr_error TEXT,
+    ocr_processed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE
+  );
+`);
+
+// OCR任务队列表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ocr_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_type TEXT NOT NULL,
+    target_id INTEGER NOT NULL,
+    image_url TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+    retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 3,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+// 创建OCR队列索引
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ocr_queue_status ON ocr_queue(status)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ocr_queue_created_at ON ocr_queue(created_at)`);
+
 console.log('数据库表创建成功！');
 db.close();
 

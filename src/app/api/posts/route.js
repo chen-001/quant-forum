@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { postQueries } from '@/lib/db';
+import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取帖子列表
 export async function GET(request) {
@@ -79,6 +80,11 @@ export async function POST(request) {
                     }
                 });
             }
+        }
+
+        // 如果内容包含图片，添加OCR任务
+        if (content && content.includes('![')) {
+            ocrTextQueries.scheduleOCR('post', postId, content);
         }
 
         return NextResponse.json({

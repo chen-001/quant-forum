@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { ideaQueries } from '@/lib/db';
+import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取帖子的想法区内容
 export async function GET(request, { params }) {
@@ -37,6 +38,14 @@ export async function PUT(request, { params }) {
         }
 
         ideaQueries.upsert(parseInt(id), content, session.user.id);
+
+        // 如果内容包含图片，添加OCR任务
+        if (content.includes('![')) {
+            const idea = ideaQueries.get(parseInt(id));
+            if (idea) {
+                ocrTextQueries.scheduleOCR('idea', idea.id, content);
+            }
+        }
 
         // 返回更新后的内容
         const idea = ideaQueries.get(parseInt(id));

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { todoQueries } from '@/lib/db';
+import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // PATCH /api/todos/[id]/note - 更新说明
 export async function PATCH(request, { params }) {
@@ -24,6 +25,11 @@ export async function PATCH(request, { params }) {
         }
 
         todoQueries.updateNote(parseInt(id), note || '');
+
+        // 如果note内容包含图片，添加OCR任务
+        if (note && note.includes('![')) {
+            ocrTextQueries.scheduleOCR('todo', parseInt(id), note);
+        }
 
         return NextResponse.json({ message: '说明更新成功' });
     } catch (error) {

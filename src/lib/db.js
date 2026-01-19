@@ -17,8 +17,22 @@ export function getDb() {
         db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
+
+        // 启动OCR队列处理
+        startOCRQueue();
     }
     return db;
+}
+
+// 启动OCR队列处理
+async function startOCRQueue() {
+    try {
+        const { ocrQueue } = await import('./ocr-queue.js');
+        ocrQueue.start(db);
+        console.log('OCR队列已启动');
+    } catch (error) {
+        console.error('启动OCR队列失败:', error);
+    }
 }
 
 // 用户相关操作

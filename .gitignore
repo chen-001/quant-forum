@@ -43,6 +43,9 @@ next-env.d.ts
 *.db*
 *.jpg
 
+# config files with sensitive data
+data/config.json
+
 public/uploads/*
 data/forum.db
 dist-electron/*
