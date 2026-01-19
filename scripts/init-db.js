@@ -349,6 +349,39 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ocr_queue_status ON ocr_queue(status)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ocr_queue_created_at ON ocr_queue(created_at)`);
 
+// ========== AI聊天相关表 ==========
+
+// 对话表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    page_type TEXT NOT NULL CHECK(page_type IN ('home', 'post_detail', 'favorites_mine', 'favorites_all', 'todos_mine', 'todos_all')),
+    context_id INTEGER,
+    title TEXT,
+    opencode_session_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+`);
+
+// 消息表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system', 'tool')),
+    content TEXT NOT NULL,
+    tool_calls TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
+  );
+`);
+
+// 创建聊天相关索引
+db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_conversations_user ON chat_conversations(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id)`);
+
 console.log('数据库表创建成功！');
 db.close();
-

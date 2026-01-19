@@ -9,6 +9,7 @@ import TableEditor from '@/components/TableEditor';
 import InteractiveContent from '@/components/InteractiveContent';
 import InteractiveMarkdownRenderer from '@/components/InteractiveMarkdownRenderer';
 import FavoriteTodoIndicator from '@/components/FavoriteTodoIndicator';
+import AIChatButton from '@/components/AIChatButton';
 
 const MAX_OPEN_FRAMES = 4;
 
@@ -569,6 +570,7 @@ export default function PostDetailPage({ params }) {
     return (
         <>
             <Header />
+            <AIChatButton pageType="post_detail" contextId={parseInt(id)} />
             <main className="container">
                 {/* 帖子标题 */}
                 <div className="post-detail-header" style={{ marginBottom: '0' }}>

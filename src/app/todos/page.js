@@ -6,6 +6,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { MarkdownEditor } from '@/components/MarkdownRenderer';
 import UserTransferModal from '@/components/UserTransferModal';
 import Link from 'next/link';
+import AIChatButton from '@/components/AIChatButton';
 
 export default function TodosPage() {
     const [user, setUser] = useState(null);
@@ -294,6 +295,7 @@ export default function TodosPage() {
     return (
         <>
             <Header />
+            <AIChatButton pageType={scope === 'mine' ? 'todos_mine' : 'todos_all'} />
             <main className="container">
                 <div className="todos-page">
                     <div className="todos-header">

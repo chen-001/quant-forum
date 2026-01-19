@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { RatingBadges } from '@/components/RatingPanel';
+import AIChatButton from '@/components/AIChatButton';
 
 const SORT_OPTIONS = [
   { key: 'created_at', label: '最新发帖' },
@@ -64,6 +65,7 @@ export default function HomePage() {
   return (
     <>
       <Header />
+      <AIChatButton pageType="home" />
       <main className="container">
         <div className="posts-header">
           <h1 style={{ fontSize: '24px', fontWeight: '700' }}>

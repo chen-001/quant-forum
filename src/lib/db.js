@@ -17,11 +17,30 @@ export function getDb() {
         db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
+        ensureChatSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
     }
     return db;
+}
+
+function ensureChatSchema(database) {
+    try {
+        const table = database.prepare(`
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'chat_conversations'
+        `).get();
+        if (!table) return;
+
+        const columns = database.prepare('PRAGMA table_info(chat_conversations)').all();
+        const hasSessionId = columns.some(column => column.name === 'opencode_session_id');
+        if (!hasSessionId) {
+            database.prepare('ALTER TABLE chat_conversations ADD COLUMN opencode_session_id TEXT').run();
+        }
+    } catch (error) {
+        console.error('ensureChatSchema failed:', error);
+    }
 }
 
 // 启动OCR队列处理
@@ -748,5 +767,125 @@ export const todoQueries = {
             WHERE id = ? AND user_id = ?
         `);
         return stmt.run(targetUserId, originalUserId, todoId, originalUserId);
+    }
+};
+
+// AI聊天相关操作
+export const chatQueries = {
+    // 创建对话
+    createConversation: (userId, pageType, contextId = null, title = null, opencodeSessionId = null) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO chat_conversations (user_id, page_type, context_id, title, opencode_session_id)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+        return stmt.run(userId, pageType, contextId, title, opencodeSessionId);
+    },
+
+    // 获取用户的所有对话
+    findConversationsByUserId: (userId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT c.*, COUNT(m.id) as message_count
+            FROM chat_conversations c
+            LEFT JOIN chat_messages m ON c.id = m.conversation_id
+            WHERE c.user_id = ?
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC
+        `);
+        return stmt.all(userId);
+    },
+
+    // 获取对话详情
+    findConversationById: (conversationId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM chat_conversations WHERE id = ?');
+        return stmt.get(conversationId);
+    },
+
+    // 更新对话标题
+    updateConversationTitle: (conversationId, title) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE chat_conversations
+            SET title = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `);
+        return stmt.run(title, conversationId);
+    },
+
+    // 更新OpenCode会话ID
+    updateConversationSession: (conversationId, sessionId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE chat_conversations
+            SET opencode_session_id = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `);
+        return stmt.run(sessionId, conversationId);
+    },
+
+    // 更新对话时间
+    updateConversationTime: (conversationId) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE chat_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+        return stmt.run(conversationId);
+    },
+
+    // 删除对话
+    deleteConversation: (conversationId, userId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM chat_conversations WHERE id = ? AND user_id = ?');
+        return stmt.run(conversationId, userId);
+    },
+
+    // 添加消息
+    addMessage: (conversationId, role, content, toolCalls = null) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO chat_messages (conversation_id, role, content, tool_calls)
+            VALUES (?, ?, ?, ?)
+        `);
+        const toolCallsJson = toolCalls ? JSON.stringify(toolCalls) : null;
+        return stmt.run(conversationId, role, content, toolCallsJson);
+    },
+
+    // 获取对话的所有消息
+    findMessagesByConversationId: (conversationId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT * FROM chat_messages
+            WHERE conversation_id = ?
+            ORDER BY created_at ASC
+        `);
+        const messages = stmt.all(conversationId);
+        // 解析 tool_calls JSON
+        return messages.map(msg => ({
+            ...msg,
+            tool_calls: msg.tool_calls ? JSON.parse(msg.tool_calls) : null
+        }));
+    },
+
+    // 获取对话的最后N条消息
+    findRecentMessagesByConversationId: (conversationId, limit = 50) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT * FROM chat_messages
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        `);
+        const messages = stmt.all(conversationId, limit).reverse();
+        return messages.map(msg => ({
+            ...msg,
+            tool_calls: msg.tool_calls ? JSON.parse(msg.tool_calls) : null
+        }));
+    },
+
+    // 删除消息
+    deleteMessages: (conversationId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM chat_messages WHERE conversation_id = ?');
+        return stmt.run(conversationId);
     }
 };

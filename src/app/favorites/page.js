@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import Link from 'next/link';
+import AIChatButton from '@/components/AIChatButton';
 
 export default function FavoritesPage() {
     const [favorites, setFavorites] = useState([]);
@@ -222,6 +223,7 @@ export default function FavoritesPage() {
     return (
         <>
             <Header />
+            <AIChatButton pageType={scope === 'mine' ? 'favorites_mine' : 'favorites_all'} />
             <main className="container">
                 <div className="favorites-page">
                     <div className="favorites-header">
