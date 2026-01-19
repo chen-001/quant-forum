@@ -2871,6 +2871,88 @@ a:hover {
   color: var(--text-muted);
 }
 
+.ai-chat-conversation-edit {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition);
+}
+
+.ai-chat-conversation:hover .ai-chat-conversation-edit {
+  opacity: 1;
+}
+
+.ai-chat-conversation-edit:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+}
+
+.ai-chat-title-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.ai-chat-title-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.ai-chat-title-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.ai-chat-title-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-chat-title-save,
+.ai-chat-title-cancel {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ai-chat-title-save {
+  color: var(--success);
+}
+
+.ai-chat-title-save:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.ai-chat-title-cancel {
+  color: var(--text-muted);
+}
+
+.ai-chat-title-cancel:hover {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-primary);
+}
+
 .ai-chat-conversation-delete {
   width: 28px;
   height: 28px;
@@ -3041,4 +3123,131 @@ a:hover {
 /* 调整大小时的窗口样式 */
 .ai-chat-window.resizing {
   user-select: none;
+}
+
+/* 流式消息容器 */
+.ai-chat-streaming-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+/* 思考过程 */
+.ai-chat-reasoning-section {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ai-chat-reasoning-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ai-chat-reasoning-content {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 工具调用 */
+.ai-chat-tool-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-chat-tool-call {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.ai-chat-tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.ai-chat-tool-call-header:hover {
+  opacity: 0.8;
+}
+
+.ai-chat-tool-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-chat-tool-expand-icon {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.ai-chat-tool-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ai-chat-tool-section {
+  margin-bottom: 8px;
+}
+
+.ai-chat-tool-section:last-child {
+  margin-bottom: 0;
+}
+
+.ai-chat-tool-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.ai-chat-tool-data {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.ai-chat-tool-call.status-running {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.ai-chat-tool-call.status-completed {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.ai-chat-tool-call.status-error {
+  background: rgba(239, 68, 68, 0.1);
 }

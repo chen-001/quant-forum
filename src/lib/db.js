@@ -18,6 +18,7 @@ export function getDb() {
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
         ensureChatSchema(db);
+        ensurePostSummariesSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -40,6 +41,37 @@ function ensureChatSchema(database) {
         }
     } catch (error) {
         console.error('ensureChatSchema failed:', error);
+    }
+}
+
+function ensurePostSummariesSchema(database) {
+    try {
+        const table = database.prepare(`
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'post_summaries'
+        `).get();
+        if (!table) {
+            database.prepare(`
+                CREATE TABLE IF NOT EXISTS post_summaries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    post_id INTEGER NOT NULL UNIQUE,
+                    main_topic TEXT NOT NULL,
+                    main_logic TEXT NOT NULL,
+                    factors TEXT,
+                    key_concepts TEXT,
+                    summary TEXT NOT NULL,
+                    ai_model TEXT,
+                    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+                )
+            `).run();
+            database.prepare(`CREATE INDEX IF NOT EXISTS idx_post_summaries_main_topic ON post_summaries(main_topic)`).run();
+            database.prepare(`CREATE INDEX IF NOT EXISTS idx_post_summaries_key_concepts ON post_summaries(key_concepts)`).run();
+            console.log('post_summaries table created');
+        }
+    } catch (error) {
+        console.error('ensurePostSummariesSchema failed:', error);
     }
 }
 
@@ -887,5 +919,83 @@ export const chatQueries = {
         const db = getDb();
         const stmt = db.prepare('DELETE FROM chat_messages WHERE conversation_id = ?');
         return stmt.run(conversationId);
+    }
+};
+
+// 帖子摘要相关操作
+export const postSummaryQueries = {
+    // 创建摘要
+    create: (postId, mainTopic, mainLogic, factors, keyConcepts, summary, aiModel) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO post_summaries (post_id, main_topic, main_logic, factors, key_concepts, summary, ai_model)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(postId, mainTopic, mainLogic, factors, keyConcepts, summary, aiModel);
+    },
+
+    // 更新摘要
+    update: (postId, mainTopic, mainLogic, factors, keyConcepts, summary) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE post_summaries
+            SET main_topic = ?, main_logic = ?, factors = ?, key_concepts = ?, summary = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = ?
+        `);
+        return stmt.run(mainTopic, mainLogic, factors, keyConcepts, summary, postId);
+    },
+
+    // 获取摘要
+    getByPostId: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM post_summaries WHERE post_id = ?');
+        return stmt.get(postId);
+    },
+
+    // 获取所有摘要
+    getAll: () => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT
+                ps.*,
+                p.title as post_title,
+                p.author_id,
+                u.username as author_name
+            FROM post_summaries ps
+            JOIN posts p ON p.id = ps.post_id
+            LEFT JOIN users u ON p.author_id = u.id
+            ORDER BY ps.updated_at DESC
+        `);
+        return stmt.all();
+    },
+
+    // 搜索摘要（模糊匹配）
+    search: (keyword, limit = 10) => {
+        const db = getDb();
+        const pattern = `%${keyword}%`;
+        const stmt = db.prepare(`
+            SELECT
+                ps.*,
+                p.title as post_title,
+                p.author_id,
+                u.username as author_name
+            FROM post_summaries ps
+            JOIN posts p ON p.id = ps.post_id
+            LEFT JOIN users u ON p.author_id = u.id
+            WHERE ps.main_topic LIKE ?
+               OR ps.main_logic LIKE ?
+               OR ps.key_concepts LIKE ?
+               OR ps.summary LIKE ?
+            ORDER BY ps.updated_at DESC
+            LIMIT ?
+        `);
+        return stmt.all(pattern, pattern, pattern, pattern, limit);
+    },
+
+    // 检查是否存在
+    exists: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT 1 FROM post_summaries WHERE post_id = ?');
+        return stmt.get(postId);
     }
 };

@@ -301,3 +301,37 @@ export function getTableColumns(tableName) {
   const stmt = db.prepare(`PRAGMA table_info(${tableName})`);
   return stmt.all();
 }
+
+// ==================== 帖子摘要相关查询 ====================
+
+/**
+ * 搜索帖子摘要
+ * @param {string} keyword - 搜索关键词
+ * @param {number} limit - 结果数量限制
+ * @returns {Array} 搜索结果
+ */
+export function searchSummaries(keyword, limit = 10) {
+  const { postSummaryQueries } = require('./db.js');
+  const results = postSummaryQueries.search(keyword, limit);
+  // 解析JSON字段
+  return results.map(r => ({
+    ...r,
+    factors: r.factors ? JSON.parse(r.factors) : [],
+    key_concepts: r.key_concepts ? JSON.parse(r.key_concepts) : []
+  }));
+}
+
+/**
+ * 获取所有帖子摘要
+ * @returns {Array} 所有摘要
+ */
+export function getAllSummaries() {
+  const { postSummaryQueries } = require('./db.js');
+  const results = postSummaryQueries.getAll();
+  // 解析JSON字段
+  return results.map(r => ({
+    ...r,
+    factors: r.factors ? JSON.parse(r.factors) : [],
+    key_concepts: r.key_concepts ? JSON.parse(r.key_concepts) : []
+  }));
+}

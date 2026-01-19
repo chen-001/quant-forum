@@ -170,6 +170,13 @@ export function createToolExecutor(pageType, contextId = null, userId = null) {
       case 'getTableColumns':
         return queries.getTableColumns(args.tableName);
 
+      // ==================== 帖子摘要工具 ====================
+      case 'searchSummaries':
+        return queries.searchSummaries(args.keyword, args.limit || 10);
+
+      case 'getAllSummaries':
+        return queries.getAllSummaries();
+
       default:
         throw new Error(`未知工具: ${toolName}`);
     }

@@ -3,6 +3,100 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import { WindowState } from './hooks/useDraggable';
+import { useStreamingChat } from './hooks/useStreamingChat';
+import StreamingMessage from './StreamingMessage';
+
+// 历史消息中的思考过程组件
+function HistoryReasoning({ reasoning }) {
+  const [showReasoning, setShowReasoning] = useState(false);
+  
+  if (!reasoning) return null;
+  
+  return (
+    <div className="ai-chat-reasoning-section">
+      <button
+        className="ai-chat-reasoning-toggle"
+        onClick={() => setShowReasoning(!showReasoning)}
+      >
+        <span>{showReasoning ? '🔽' : '▶️'}</span>
+        <span>思考过程</span>
+      </button>
+      {showReasoning && (
+        <div className="ai-chat-reasoning-content">{reasoning}</div>
+      )}
+    </div>
+  );
+}
+
+// 历史消息中的工具调用组件
+function HistoryToolCalls({ toolCalls }) {
+  const [expandedTools, setExpandedTools] = useState(new Set());
+  
+  if (!toolCalls || toolCalls.length === 0) return null;
+  
+  const getStatusIcon = (status) => {
+    const icons = { pending: '⏳', running: '🔄', completed: '✅', error: '❌' };
+    return icons[status] || '🔧';
+  };
+  
+  const toggleToolExpand = (index) => {
+    setExpandedTools(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+  
+  const formatToolData = (data) => {
+    if (!data) return null;
+    if (typeof data === 'string') return data;
+    try {
+      return JSON.stringify(data, null, 2);
+    } catch {
+      return String(data);
+    }
+  };
+  
+  return (
+    <div className="ai-chat-tool-calls">
+      {toolCalls.map((call, index) => (
+        <div key={index} className={`ai-chat-tool-call status-${call.status}`}>
+          <div 
+            className="ai-chat-tool-call-header"
+            onClick={() => toggleToolExpand(index)}
+            style={{ cursor: 'pointer' }}
+          >
+            <span>{getStatusIcon(call.status)}</span>
+            <span className="ai-chat-tool-name">{call.title || call.tool}</span>
+            <span className="ai-chat-tool-expand-icon">
+              {expandedTools.has(index) ? '🔽' : '▶️'}
+            </span>
+          </div>
+          {expandedTools.has(index) && (
+            <div className="ai-chat-tool-details">
+              {call.input && (
+                <div className="ai-chat-tool-section">
+                  <div className="ai-chat-tool-section-label">输入:</div>
+                  <pre className="ai-chat-tool-data">{formatToolData(call.input)}</pre>
+                </div>
+              )}
+              {call.output && (
+                <div className="ai-chat-tool-section">
+                  <div className="ai-chat-tool-section-label">输出:</div>
+                  <pre className="ai-chat-tool-data">{formatToolData(call.output)}</pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * AI聊天悬浮窗组件
@@ -38,7 +132,11 @@ export default function ChatWindow({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showConversationList, setShowConversationList] = useState(true);
+  const [editingTitleId, setEditingTitleId] = useState(null);
+  const [editingTitleValue, setEditingTitleValue] = useState('');
+  const [streamingEvents, setStreamingEvents] = useState([]);
   const messagesEndRef = useRef(null);
+  const { isStreaming, sendStreamingMessage } = useStreamingChat();
 
   const isMinimized = windowState === WindowState.MINIMIZED;
 
@@ -102,7 +200,7 @@ export default function ChatWindow({
 
   // 发送消息
   const sendMessage = async () => {
-    if (isLoading) return;
+    if (isStreaming) return;
     const trimmed = inputValue.trim();
     if (!trimmed) return;
     let currentConversation = activeConversation;
@@ -115,27 +213,26 @@ export default function ChatWindow({
 
     const content = trimmed;
     setInputValue('');
-    setIsLoading(true);
-
     setMessages(prev => [...prev, { role: 'user', content }]);
+    setStreamingEvents([]);
 
-    try {
-      const res = await fetch(`/api/ai/chat/${currentConversation.id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || '发送消息失败');
+    await sendStreamingMessage(currentConversation.id, content, (event) => {
+      switch (event.type) {
+        case 'reasoning':
+        case 'text':
+        case 'tool':
+          setStreamingEvents(prev => [...prev, event]);
+          break;
+        case 'done':
+          fetchMessages(currentConversation.id);
+          setStreamingEvents([]);
+          break;
+        case 'error':
+          setMessages(prev => [...prev, { role: 'assistant', content: `错误: ${event.error}` }]);
+          setStreamingEvents([]);
+          break;
       }
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-    } catch (error) {
-      console.error('发送消息失败:', error);
-      setMessages(prev => [...prev.slice(0, -1), { role: 'user', content }, { role: 'assistant', content: '抱歉，发生了错误，请重试。' }]);
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   // 删除对话
@@ -164,6 +261,52 @@ export default function ChatWindow({
   // 回到对话列表
   const backToList = () => {
     setShowConversationList(true);
+  };
+
+  // 开始编辑标题
+  const startEditingTitle = (conversation, e) => {
+    e.stopPropagation();
+    setEditingTitleId(conversation.id);
+    setEditingTitleValue(conversation.title || '');
+  };
+
+  // 保存标题
+  const saveTitle = async (conversationId, e) => {
+    e?.stopPropagation();
+    const trimmedTitle = editingTitleValue.trim();
+    if (!trimmedTitle) {
+      setEditingTitleId(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/ai/chat/${conversationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmedTitle })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || '更新标题失败');
+      }
+      await fetchConversations();
+      if (activeConversation?.id === conversationId) {
+        setActiveConversation(data.conversation);
+      }
+    } catch (error) {
+      console.error('更新标题失败:', error);
+      alert(error.message || '更新标题失败，请重试。');
+    } finally {
+      setEditingTitleId(null);
+      setEditingTitleValue('');
+    }
+  };
+
+  // 取消编辑标题
+  const cancelEditingTitle = (e) => {
+    e?.stopPropagation();
+    setEditingTitleId(null);
+    setEditingTitleValue('');
   };
 
   // 拖拽开始处理
@@ -224,16 +367,37 @@ export default function ChatWindow({
     }
 
     const isUser = message.role === 'user';
+    
+    // 解析 tool_calls 中的思考过程和工具调用
+    const toolCallsData = message.tool_calls;
+    const reasoning = toolCallsData?.reasoning;
+    const toolCalls = toolCallsData?.toolCalls;
+    
     return (
       <div className={`ai-chat-message-row ${isUser ? 'user' : 'assistant'}`}>
         <div className={`ai-chat-message-bubble ${isUser ? 'user' : 'assistant'}`}>
           {isUser ? (
             <div className="ai-chat-message-text">{message.content}</div>
           ) : (
-            <div
-              className="markdown-content ai-chat-message-markdown"
-              dangerouslySetInnerHTML={{ __html: marked.parse(message.content) }}
-            />
+            <>
+              {/* 思考过程 */}
+              {reasoning && (
+                <HistoryReasoning reasoning={reasoning} />
+              )}
+              
+              {/* 工具调用 */}
+              {toolCalls && toolCalls.length > 0 && (
+                <HistoryToolCalls toolCalls={toolCalls} />
+              )}
+              
+              {/* 最终回答 */}
+              {message.content && (
+                <div
+                  className="markdown-content ai-chat-message-markdown"
+                  dangerouslySetInnerHTML={{ __html: marked.parse(message.content) }}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -338,26 +502,81 @@ export default function ChatWindow({
                     {conversations.map(conv => (
                       <div
                         key={conv.id}
-                        onClick={() => selectConversation(conv)}
+                        onClick={() => editingTitleId !== conv.id && selectConversation(conv)}
                         className="ai-chat-conversation"
                       >
                         <div className="ai-chat-conversation-info">
-                          <div className="ai-chat-conversation-title">
-                            {conv.title || `对话 ${conv.id}`}
-                          </div>
-                          <div className="ai-chat-conversation-meta">
-                            {conv.message_count || 0} 条消息
-                          </div>
+                          {editingTitleId === conv.id ? (
+                            <div className="ai-chat-title-edit">
+                              <input
+                                type="text"
+                                value={editingTitleValue}
+                                onChange={(e) => setEditingTitleValue(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    saveTitle(conv.id, e);
+                                  } else if (e.key === 'Escape') {
+                                    cancelEditingTitle(e);
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="input ai-chat-title-input"
+                                autoFocus
+                              />
+                              <div className="ai-chat-title-edit-actions">
+                                <button
+                                  onClick={(e) => saveTitle(conv.id, e)}
+                                  className="ai-chat-title-save"
+                                  title="保存"
+                                >
+                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={(e) => cancelEditingTitle(e)}
+                                  className="ai-chat-title-cancel"
+                                  title="取消"
+                                >
+                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="ai-chat-conversation-title">
+                                {conv.title || `对话 ${conv.id}`}
+                              </div>
+                              <div className="ai-chat-conversation-meta">
+                                {conv.message_count || 0} 条消息
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <button
-                          onClick={(e) => deleteConversation(conv.id, e)}
-                          className="ai-chat-conversation-delete"
-                          title="删除对话"
-                        >
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {editingTitleId !== conv.id && (
+                          <>
+                            <button
+                              onClick={(e) => startEditingTitle(conv, e)}
+                              className="ai-chat-conversation-edit"
+                              title="编辑标题"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={(e) => deleteConversation(conv.id, e)}
+                              className="ai-chat-conversation-delete"
+                              title="删除对话"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -380,6 +599,7 @@ export default function ChatWindow({
                     </div>
                   ))
                 )}
+                {streamingEvents.length > 0 && <StreamingMessage events={streamingEvents} />}
                 {isLoading && (
                   <div className="ai-chat-message-row assistant">
                     <div className="ai-chat-loading-bubble">
@@ -403,12 +623,12 @@ export default function ChatWindow({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="输入问题..."
-                    disabled={isLoading}
+                    disabled={isStreaming}
                     className="input ai-chat-input"
                   />
                   <button
                     onClick={sendMessage}
-                    disabled={isLoading || !inputValue.trim()}
+                    disabled={isStreaming || !inputValue.trim()}
                     className="btn btn-primary ai-chat-send-button"
                   >
                     发送

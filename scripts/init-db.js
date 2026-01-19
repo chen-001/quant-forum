@@ -383,5 +383,28 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_conversations_user ON chat_conversations(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id)`);
 
+// ========== 帖子摘要表 ==========
+
+// 创建帖子摘要表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL UNIQUE,
+    main_topic TEXT NOT NULL,
+    main_logic TEXT NOT NULL,
+    factors TEXT,
+    key_concepts TEXT,
+    summary TEXT NOT NULL,
+    ai_model TEXT,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+  );
+`);
+
+// 创建摘要表索引
+db.exec(`CREATE INDEX IF NOT EXISTS idx_post_summaries_main_topic ON post_summaries(main_topic)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_post_summaries_key_concepts ON post_summaries(key_concepts)`);
+
 console.log('数据库表创建成功！');
 db.close();

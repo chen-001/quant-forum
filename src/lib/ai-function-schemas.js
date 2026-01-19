@@ -304,5 +304,58 @@ export const AI_FUNCTION_SCHEMAS = [
         required: ['tableName']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'searchSummaries',
+      description: `搜索帖子摘要，快速了解论坛中有哪些相关研究。
+
+摘要包含的信息：
+- 主要主题：帖子的核心研究内容
+- 主要逻辑：研究思路和方法
+- 因子列表：帖子中提到的所有因子
+- 关键概念：相关术语、方法、数据
+
+使用场景：
+- 用户使用隐喻或间接描述时，先搜索摘要了解相关内容
+- 需要快速浏览论坛研究方向时
+- 找到相关摘要后，再使用getPostDetail获取完整内容`,
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword: {
+            type: 'string',
+            description: '搜索关键词'
+          },
+          limit: {
+            type: 'number',
+            description: '返回结果数量限制',
+            default: 10
+          }
+        },
+        required: ['keyword']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'getAllSummaries',
+      description: `获取所有帖子的摘要列表，用于浏览论坛的整体研究方向。
+
+在回答用户问题前，可以先获取所有摘要，快速了解论坛有哪些研究内容和主题。`,
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: '返回数量限制',
+            default: 50
+          }
+        },
+        required: []
+      }
+    }
   }
 ];

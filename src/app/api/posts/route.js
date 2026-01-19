@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { postQueries } from '@/lib/db';
+import { postQueries, postSummaryQueries } from '@/lib/db';
 import { ocrTextQueries } from '@/lib/ocr-queries';
+import { generatePostSummary, savePostSummary } from '@/lib/ai-summary.js';
 
 // 获取帖子列表
 export async function GET(request) {
@@ -86,6 +87,13 @@ export async function POST(request) {
         if (content && content.includes('![')) {
             ocrTextQueries.scheduleOCR('post', postId, content);
         }
+
+        // 异步生成摘要（不阻塞响应）
+        generatePostSummary(postId).then(summary => {
+            savePostSummary(summary);
+        }).catch(err => {
+            console.error('生成摘要失败:', err);
+        });
 
         return NextResponse.json({
             message: '发帖成功',
