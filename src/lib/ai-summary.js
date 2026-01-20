@@ -60,7 +60,12 @@ ${contentToUse.slice(0, 8000) || '(无内容)'}
 3. 识别关键概念（即使是非标准术语也要提取）
 4. 用简洁的中文表达
 
-**重要：** 请只返回JSON格式的摘要，不要有任何其他说明文字。格式示例：
+**重要：**
+- 必须**只**返回JSON格式，不要有任何其他说明文字
+- 即使内容为空或无法分析，也必须返回有效的JSON结构（字段值可以为空字符串或空数组）
+- 不要返回"抱歉"之类的说明，直接返回JSON
+
+格式示例：
 \`\`\`json
 {"main_topic":"...","main_logic":"...","factors":[...],"key_concepts":[...],"summary":"..."}
 \`\`\``;
@@ -70,22 +75,121 @@ ${contentToUse.slice(0, 8000) || '(无内容)'}
     const response = await chatWithSession(sessionId, prompt, '你是一个专业的量化研究助手。');
     const content = extractTextFromResponse(response);
 
+    // 检测AI返回的是否是非JSON的文本说明
+    const trimmedContent = content.trim();
+    if (!trimmedContent.startsWith('{') && !trimmedContent.startsWith('```')) {
+      console.warn('AI返回非JSON响应，使用基础摘要:', content.slice(0, 100));
+      throw new Error('AI未返回JSON格式');
+    }
+
     // 提取JSON（可能被包裹在代码块中）
     const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\{[\s\S]*\}/);
     let jsonStr = jsonMatch ? jsonMatch[1] : content;
 
-    // 直接使用eval解析格式化的JSON（更宽松）
+    // 清理AI返回的不规范JSON
+    jsonStr = jsonStr.trim();
+
+    // 尝试修复被截断的JSON
+    function fixTruncatedJSON(str) {
+      let fixed = str;
+
+      // 统计未闭合的括号和引号
+      let openBraces = 0;
+      let openBrackets = 0;
+      let inString = false;
+      let escapeNext = false;
+
+      for (let i = 0; i < fixed.length; i++) {
+        const char = fixed[i];
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+        if (char === '\\') {
+          escapeNext = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
+        if (!inString) {
+          if (char === '{') openBraces++;
+          else if (char === '}') openBraces--;
+          else if (char === '[') openBrackets++;
+          else if (char === ']') openBrackets--;
+        }
+      }
+
+      // 如果字符串未闭合，闭合它
+      if (inString) {
+        fixed = fixed.slice(0, fixed.lastIndexOf('"'));
+      }
+
+      // 补全未闭合的数组和对象
+      while (openBrackets > 0) {
+        fixed += ']';
+        openBrackets--;
+      }
+      while (openBraces > 0) {
+        fixed += '}';
+        openBraces--;
+      }
+
+      // 如果截断在字段值中间，补全
+      if (!fixed.endsWith('}')) {
+        // 移除最后不完整的字段
+        const lastComma = fixed.lastIndexOf(',');
+        if (lastComma > 0) {
+          fixed = fixed.slice(0, lastComma);
+        }
+        // 补全缺失的必需字段
+        const hasFields = {};
+        fixed.match(/"(\w+)":/g)?.forEach(m => {
+          hasFields[m.match(/"(\w+)":/)[1]] = true;
+        });
+        if (!hasFields.factors) fixed += ',"factors":[]';
+        if (!hasFields.key_concepts) fixed += ',"key_concepts":[]';
+        if (!hasFields.summary) fixed += ',"summary":""';
+        fixed += '}';
+      }
+
+      return fixed;
+    }
+
+    // 尝试多种解析方式
     let summary;
+    let lastError = null;
+
+    // 方法1: 标准JSON.parse
     try {
-      // 先尝试标准JSON.parse（处理单行JSON）
       summary = JSON.parse(jsonStr);
-    } catch (parseError) {
-      // 如果失败，使用eval解析格式化的JSON
+    } catch (e) {
+      lastError = e;
+
+      // 方法2: 修复截断后解析
       try {
-        summary = eval(`(${jsonStr})`);
-      } catch (evalError) {
-        console.warn('JSON解析完全失败，原始内容:', jsonStr.slice(0, 500));
-        throw parseError;
+        const fixed = fixTruncatedJSON(jsonStr);
+        summary = JSON.parse(fixed);
+      } catch (e2) {
+        lastError = e2;
+
+        // 方法3: 修复引号问题后解析
+        try {
+          let fixed = jsonStr;
+          fixed = fixed.replace(/"([^"]+)":\s*([a-zA-Z\u4e00-\u9fa5][^",}\]]*)/g, '"$1": "$2"');
+          summary = JSON.parse(fixed);
+        } catch (e3) {
+          lastError = e3;
+
+          // 方法4: 使用eval解析（最宽松）
+          try {
+            summary = eval(`(${jsonStr})`);
+          } catch (e4) {
+            console.warn('JSON解析完全失败，原始内容:', jsonStr.slice(0, 500));
+            throw lastError;
+          }
+        }
       }
     }
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { generateSummariesForExistingPosts } from '../src/lib/ai-summary.js';
+import config from '../data/config.json' with { type: 'json' };
 
 async function main() {
   console.log('开始为现有帖子生成摘要...\n');
-  console.log('提示：需要确保OpenCode服务正在运行 (http://localhost:4096)\n');
+  console.log(`提示：需要确保OpenCode服务正在运行 (${config.opencode?.baseURL || 'http://localhost:4095'})\n`);
 
   const result = await generateSummariesForExistingPosts();
 

@@ -1,9 +1,9 @@
-const DEFAULT_BASE_URL = 'http://localhost:4096';
+import config from '../../data/config.json' with { type: 'json' };
 
-const baseURL = process.env.OPENCODE_BASE_URL || DEFAULT_BASE_URL;
-const providerID = process.env.OPENCODE_PROVIDER_ID || 'zhipuai-coding-plan';
-const modelID = process.env.OPENCODE_MODEL_ID || 'glm-4.7';
-const agent = process.env.OPENCODE_AGENT || 'build';
+const baseURL = process.env.OPENCODE_BASE_URL || config.opencode?.baseURL || 'http://localhost:4095';
+const providerID = process.env.OPENCODE_PROVIDER_ID || config.opencode?.providerID || 'zhipuai-coding-plan';
+const modelID = process.env.OPENCODE_MODEL_ID || config.opencode?.modelID || 'glm-4.7';
+const agent = process.env.OPENCODE_AGENT || config.opencode?.agent || 'build';
 const directory = process.env.OPENCODE_DIRECTORY || process.cwd();
 
 // 禁用的危险工具列表（可修改文件或执行命令的工具）

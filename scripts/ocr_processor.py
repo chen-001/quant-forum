@@ -91,7 +91,7 @@ def process_content(content_json_str, project_path):
         # 替换图片为OCR文字
         img_pattern = r'!\[.*?\]\(' + re.escape(image_url) + r'\)'
         if ocr_text:
-            processed_content = re.sub(img_pattern, ocr_text, processed_content)
+            processed_content = re.sub(img_pattern, lambda m: ocr_text, processed_content)
         else:
             processed_content = re.sub(img_pattern, '[图片识别失败]', processed_content)
 
