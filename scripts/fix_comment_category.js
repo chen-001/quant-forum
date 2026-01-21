@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = path.join(__dirname, '../forum.db');
+const dbPath = path.join(__dirname, '../data/forum.db');
 const db = new Database(dbPath);
 
 // 使用递归CTE修复所有回复的标签，使其与根评论标签一致
