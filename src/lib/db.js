@@ -384,6 +384,21 @@ export const commentQueries = {
         const db = getDb();
         const stmt = db.prepare('UPDATE comments SET category = ? WHERE id = ? AND author_id = ?');
         return stmt.run(category, id, authorId);
+    },
+
+    updateCategoryRecursive: (id, authorId, category) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            WITH RECURSIVE comment_tree AS (
+                SELECT id FROM comments WHERE id = ?
+                UNION ALL
+                SELECT c.id FROM comments c
+                INNER JOIN comment_tree ct ON c.parent_id = ct.id
+            )
+            UPDATE comments SET category = ?
+            WHERE id IN (SELECT id FROM comment_tree) AND author_id = ?
+        `);
+        return stmt.run(id, category, authorId);
     }
 };
 

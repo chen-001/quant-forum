@@ -2703,7 +2703,7 @@ a:hover {
 .ai-chat-floating-button {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: 80px;
   z-index: 10002;
   width: 56px;
   height: 56px;

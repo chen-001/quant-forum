@@ -78,7 +78,7 @@ export async function PATCH(request, { params }) {
             if (comment.author_id !== session.user.id) {
                 return NextResponse.json({ error: '只能修改自己评论的标签' }, { status: 403 });
             }
-            commentQueries.updateCategory(commentId, session.user.id, category);
+            commentQueries.updateCategoryRecursive(commentId, session.user.id, category);
             return NextResponse.json({ message: '标签修改成功' });
         }
 

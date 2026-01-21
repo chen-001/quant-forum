@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.5.0",
+    "better-sqlite3": "^12.6.2",
     "highlight.js": "^11.11.1",
     "iron-session": "^8.0.4",
     "katex": "^0.16.27",
