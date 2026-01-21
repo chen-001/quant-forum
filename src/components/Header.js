@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MobileDrawer from './MobileDrawer';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
     const [user, setUser] = useState(null);
@@ -61,6 +62,7 @@ export default function Header() {
                         <Link href="/todos" className="btn btn-ghost">
                             📋 待办
                         </Link>
+                        <ThemeToggle />
                         <div className="user-info">
                             <span>👤 {user.username}</span>
                         </div>
@@ -70,6 +72,7 @@ export default function Header() {
                     </>
                 ) : (
                     <>
+                        <ThemeToggle />
                         <Link href="/login" className="btn btn-secondary">
                             登录
                         </Link>

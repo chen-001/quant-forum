@@ -25,6 +25,20 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var saved = localStorage.getItem('theme');
+                if (saved) {
+                  document.documentElement.setAttribute('data-theme', saved);
+                } else if (!window.matchMedia('(prefers-color-scheme: light)').matches) {
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body suppressHydrationWarning>
         <ElectronDragRegion />
