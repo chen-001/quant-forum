@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { postSummaryQueries, summaryLogQueries } from '@/lib/db';
+import { activityLogQueries, postSummaryQueries, summaryLogQueries } from '@/lib/db';
 import { regeneratePostSummary, smartUpdateSummary } from '@/lib/ai-summary';
+import { getSessionFromCookies } from '@/lib/session';
+import { cookies } from 'next/headers';
 
 const formatUtcTimestamp = (date) => date.toISOString().replace('T', ' ').replace('Z', '');
 const truncateLogValue = (value, limit = 120) => {
@@ -25,6 +27,10 @@ export async function GET(request, { params }) {
 // PUT /api/summaries/[postId] - 更新用户编辑
 export async function PUT(request, { params }) {
   const { postId } = await params;
+  const session = await getSessionFromCookies(await cookies());
+  if (!session.user) {
+    return NextResponse.json({ error: '请先登录' }, { status: 401 });
+  }
   const body = await request.json();
   const numericPostId = parseInt(postId);
   const startTime = Date.now();
@@ -54,6 +60,17 @@ export async function PUT(request, { params }) {
       contentHashBefore,
       contentHashAfter
     });
+    activityLogQueries.create({
+      category: 'summary',
+      action: 'summary_field_updated',
+      actorId: session.user.id,
+      relatedUserId: session.user.id,
+      postId: numericPostId,
+      summaryId: existing?.id || null,
+      meta: {
+        field: body.field
+      }
+    });
     return NextResponse.json({ success: result.changes > 0 });
   } else if (body.updates) {
     const result = postSummaryQueries.updateUserEditBatch(numericPostId, body.updates);
@@ -70,6 +87,17 @@ export async function PUT(request, { params }) {
       durationSec: (Date.now() - startTime) / 1000,
       contentHashBefore,
       contentHashAfter
+    });
+    activityLogQueries.create({
+      category: 'summary',
+      action: 'summary_batch_updated',
+      actorId: session.user.id,
+      relatedUserId: session.user.id,
+      postId: numericPostId,
+      summaryId: existing?.id || null,
+      meta: {
+        fields
+      }
     });
     return NextResponse.json({ success: result.changes > 0 });
   }

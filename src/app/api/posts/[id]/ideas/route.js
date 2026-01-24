@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { ideaQueries } from '@/lib/db';
+import { activityLogQueries, ideaQueries, postQueries } from '@/lib/db';
 import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取帖子的想法区内容
@@ -48,12 +48,26 @@ export async function PUT(request, { params }) {
         }
 
         // 返回更新后的内容
-        const idea = ideaQueries.get(parseInt(id));
+        const updated = ideaQueries.get(parseInt(id));
+        const post = postQueries.findById(parseInt(id));
+        if (post) {
+            activityLogQueries.create({
+                category: 'post_detail',
+                action: 'post_idea_updated',
+                actorId: session.user.id,
+                relatedUserId: post.author_id,
+                postId: parseInt(id),
+                meta: {
+                    postTitle: post.title
+                }
+            });
+        }
+
         return NextResponse.json({
-            success: true,
-            content: idea?.content || '',
-            lastEditorName: idea?.last_editor_name || null,
-            updatedAt: idea?.updated_at || null
+            message: '更新成功',
+            content: updated.content,
+            lastEditorName: updated.last_editor_name,
+            updatedAt: updated.updated_at
         });
     } catch (error) {
         console.error('Failed to update idea:', error);

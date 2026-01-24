@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { lineCommentQueries } from '@/lib/db';
+import { activityLogQueries, lineCommentQueries, postQueries } from '@/lib/db';
 
 // 获取帖子的所有行级评论
 export async function GET(request, { params }) {
@@ -48,6 +48,21 @@ export async function POST(request, { params }) {
             session.user.id,
             content.trim()
         );
+
+        const post = postQueries.findById(parseInt(id));
+        if (post) {
+            activityLogQueries.create({
+                category: 'post_detail',
+                action: 'line_comment_created',
+                actorId: session.user.id,
+                relatedUserId: post.author_id,
+                postId: parseInt(id),
+                meta: {
+                    postTitle: post.title,
+                    lineIndex: parseInt(lineIndex)
+                }
+            });
+        }
 
         return NextResponse.json({
             success: true,

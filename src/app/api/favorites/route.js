@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { favoriteQueries } from '@/lib/db';
+import { activityLogQueries, favoriteQueries } from '@/lib/db';
 
 // GET /api/favorites - 获取用户收藏列表
 export async function GET(request) {
@@ -64,6 +64,17 @@ export async function POST(request) {
         if (existing) {
             // 已存在，执行删除
             favoriteQueries.delete(existing.id, session.user.id);
+            activityLogQueries.create({
+                category: 'favorites_todos',
+                action: 'favorite_removed',
+                actorId: session.user.id,
+                relatedUserId: session.user.id,
+                postId: parseInt(postId),
+                favoriteId: existing.id,
+                meta: {
+                    contentType
+                }
+            });
             return NextResponse.json({
                 message: '已取消收藏',
                 action: 'deleted'
@@ -82,6 +93,17 @@ export async function POST(request) {
                 startOffset: startOffset !== undefined ? parseInt(startOffset) : null,
                 endOffset: endOffset !== undefined ? parseInt(endOffset) : null,
                 visibility: visibility || 'public'
+            });
+            activityLogQueries.create({
+                category: 'favorites_todos',
+                action: 'favorite_added',
+                actorId: session.user.id,
+                relatedUserId: session.user.id,
+                postId: parseInt(postId),
+                favoriteId: result.lastInsertRowid,
+                meta: {
+                    contentType
+                }
             });
             return NextResponse.json({
                 message: '收藏成功',

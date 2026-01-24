@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { commentQueries } from '@/lib/db';
+import { activityLogQueries, commentQueries, postQueries } from '@/lib/db';
 import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取评论列表
@@ -48,6 +48,38 @@ export async function POST(request, { params }) {
             ocrTextQueries.scheduleOCR('comment', commentId, content);
         }
 
+        const post = postQueries.findById(id);
+        if (post) {
+            activityLogQueries.create({
+                category: 'post_detail',
+                action: parentId ? 'comment_reply_created' : 'comment_created',
+                actorId: session.user.id,
+                relatedUserId: post.author_id,
+                postId: parseInt(id),
+                commentId,
+                meta: {
+                    postTitle: post.title
+                }
+            });
+        }
+
+        if (parentId) {
+            const parentComment = commentQueries.findById(parentId);
+            if (parentComment && parentComment.author_id !== session.user.id) {
+                activityLogQueries.create({
+                    category: 'post_detail',
+                    action: 'comment_reply_created',
+                    actorId: session.user.id,
+                    relatedUserId: parentComment.author_id,
+                    postId: parseInt(id),
+                    commentId,
+                    meta: {
+                        postTitle: post?.title || null
+                    }
+                });
+            }
+        }
+
         return NextResponse.json({
             message: '评论成功',
             commentId
@@ -89,6 +121,20 @@ export async function PATCH(request, { params }) {
 
         if (action === 'add') {
             commentQueries.addReaction(commentId, session.user.id, reactionType);
+            const comment = commentQueries.findById(commentId);
+            if (comment && comment.author_id !== session.user.id) {
+                activityLogQueries.create({
+                    category: 'post_detail',
+                    action: reactionType === 'like' ? 'comment_liked' : 'comment_doubted',
+                    actorId: session.user.id,
+                    relatedUserId: comment.author_id,
+                    postId: comment.post_id,
+                    commentId: comment.id,
+                    meta: {
+                        postId: comment.post_id
+                    }
+                });
+            }
         } else if (action === 'remove') {
             commentQueries.removeReaction(commentId, session.user.id, reactionType);
         }

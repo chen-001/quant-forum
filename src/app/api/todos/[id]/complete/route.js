@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { todoQueries } from '@/lib/db';
+import { activityLogQueries, todoQueries } from '@/lib/db';
 
 // PATCH /api/todos/[id]/complete - 标记完成/未完成
 export async function PATCH(request, { params }) {
@@ -24,6 +24,14 @@ export async function PATCH(request, { params }) {
         }
 
         todoQueries.updateCompleteStatus(parseInt(id), isCompleted);
+        activityLogQueries.create({
+            category: 'favorites_todos',
+            action: isCompleted ? 'todo_completed' : 'todo_reopened',
+            actorId: session.user.id,
+            relatedUserId: session.user.id,
+            postId: todo.post_id,
+            todoId: todo.id
+        });
 
         return NextResponse.json({ message: isCompleted ? '已标记为完成' : '已标记为未完成' });
     } catch (error) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { postQueries } from '@/lib/db';
+import { activityLogQueries, postQueries } from '@/lib/db';
 
 // 更新表格数据 - 任何登录用户都可以编辑
 export async function PUT(request, { params }) {
@@ -35,6 +35,28 @@ export async function PUT(request, { params }) {
 
         // 获取更新后的数据
         const updatedTableData = postQueries.getTableData(id);
+
+        activityLogQueries.create({
+            category: 'post_detail',
+            action: 'post_table_updated',
+            actorId: session.user.id,
+            relatedUserId: post.author_id,
+            postId: parseInt(id),
+            meta: {
+                postTitle: post.title
+            }
+        });
+
+        activityLogQueries.create({
+            category: 'post_detail',
+            action: 'post_table_updated',
+            actorId: session.user.id,
+            relatedUserId: post.author_id,
+            postId: parseInt(id),
+            meta: {
+                postTitle: post.title
+            }
+        });
 
         return NextResponse.json({
             success: true,

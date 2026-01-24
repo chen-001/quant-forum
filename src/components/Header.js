@@ -10,11 +10,40 @@ export default function Header() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [activityCounts, setActivityCounts] = useState({ related: 0, all: 0 });
     const router = useRouter();
 
     useEffect(() => {
         fetchUser();
     }, []);
+
+    const fetchActivityCounts = async () => {
+        try {
+            const res = await fetch('/api/activities?stats=1');
+            if (!res.ok) return;
+            const data = await res.json();
+            setActivityCounts({
+                related: data.relatedCount || 0,
+                all: data.allCount || 0
+            });
+        } catch (error) {
+            console.error('Failed to fetch activity counts:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (!user) return;
+        fetchActivityCounts();
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        const handleSeen = () => {
+            fetchActivityCounts();
+        };
+        window.addEventListener('activities:seen', handleSeen);
+        return () => window.removeEventListener('activities:seen', handleSeen);
+    }, [user]);
 
     const fetchUser = async () => {
         try {
@@ -67,7 +96,9 @@ export default function Header() {
                         </Link>
                         <ThemeToggle />
                         <div className="user-info">
-                            <span>👤 {user.username}</span>
+                            <Link href="/activities" className="btn btn-ghost">
+                                {user.username} {activityCounts.related}|{activityCounts.all}
+                            </Link>
                         </div>
                         <button onClick={handleLogout} className="btn btn-ghost">
                             退出

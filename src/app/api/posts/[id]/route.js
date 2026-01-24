@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { postQueries, ratingQueries } from '@/lib/db';
+import { activityLogQueries, postQueries, ratingQueries } from '@/lib/db';
 
 // 获取帖子详情
 export async function GET(request, { params }) {
@@ -104,6 +104,17 @@ export async function PUT(request, { params }) {
         } else {
             updatedData.links = postQueries.getLinks(id);
         }
+
+        activityLogQueries.create({
+            category: 'post_detail',
+            action: 'post_updated',
+            actorId: session.user.id,
+            relatedUserId: post.author_id,
+            postId: parseInt(id),
+            meta: {
+                title: updatedData.title
+            }
+        });
 
         return NextResponse.json({
             message: '帖子更新成功',

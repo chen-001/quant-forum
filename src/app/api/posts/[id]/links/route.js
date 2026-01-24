@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { postQueries, userQueries } from '@/lib/db';
+import { activityLogQueries, postQueries, userQueries } from '@/lib/db';
 
 // 添加链接到帖子
 export async function POST(request, { params }) {
@@ -57,6 +57,19 @@ export async function POST(request, { params }) {
 
         // 返回更新后的链接列表
         const updatedLinks = postQueries.getLinks(id);
+
+        activityLogQueries.create({
+            category: 'post_detail',
+            action: 'post_link_added',
+            actorId: session.user.id,
+            relatedUserId: post.author_id,
+            postId: parseInt(id),
+            meta: {
+                postTitle: post.title,
+                linkTitle: finalTitle,
+                url: url.trim()
+            }
+        });
 
         return NextResponse.json({
             message: '链接添加成功',

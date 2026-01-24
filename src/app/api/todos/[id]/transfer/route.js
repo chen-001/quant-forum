@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { todoQueries } from '@/lib/db';
+import { activityLogQueries, todoQueries } from '@/lib/db';
 
 export async function PATCH(request, { params }) {
     try {
@@ -39,6 +39,15 @@ export async function PATCH(request, { params }) {
         if (result.changes === 0) {
             return NextResponse.json({ error: '流转失败' }, { status: 500 });
         }
+
+        activityLogQueries.create({
+            category: 'favorites_todos',
+            action: 'todo_transferred',
+            actorId: session.user.id,
+            relatedUserId: targetUserId,
+            postId: todo.post_id,
+            todoId
+        });
 
         return NextResponse.json({
             message: '流转成功',

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { resultQueries } from '@/lib/db';
+import { activityLogQueries, postQueries, resultQueries } from '@/lib/db';
 import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // 获取成果列表
@@ -39,6 +39,21 @@ export async function POST(request, { params }) {
         // 如果内容包含图片，添加OCR任务
         if (content.includes('![')) {
             ocrTextQueries.scheduleOCR('result', resultId, content);
+        }
+
+        const post = postQueries.findById(id);
+        if (post) {
+            activityLogQueries.create({
+                category: 'post_detail',
+                action: 'post_result_created',
+                actorId: session.user.id,
+                relatedUserId: post.author_id,
+                postId: parseInt(id),
+                resultId,
+                meta: {
+                    postTitle: post.title
+                }
+            });
         }
 
         return NextResponse.json({

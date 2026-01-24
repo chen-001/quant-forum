@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { todoQueries } from '@/lib/db';
+import { activityLogQueries, todoQueries } from '@/lib/db';
 
 // GET /api/todos - 获取用户待办列表
 export async function GET(request) {
@@ -60,6 +60,17 @@ export async function POST(request) {
         if (existing) {
             // 已存在，执行删除
             todoQueries.delete(existing.id, session.user.id);
+            activityLogQueries.create({
+                category: 'favorites_todos',
+                action: 'todo_removed',
+                actorId: session.user.id,
+                relatedUserId: session.user.id,
+                postId: parseInt(postId),
+                todoId: existing.id,
+                meta: {
+                    contentType
+                }
+            });
             return NextResponse.json({
                 message: '已从待办移除',
                 action: 'deleted'
@@ -79,6 +90,17 @@ export async function POST(request) {
                 endOffset: endOffset !== undefined ? parseInt(endOffset) : null,
                 note: note || null,
                 visibility: visibility || 'public'
+            });
+            activityLogQueries.create({
+                category: 'favorites_todos',
+                action: 'todo_added',
+                actorId: session.user.id,
+                relatedUserId: session.user.id,
+                postId: parseInt(postId),
+                todoId: result.lastInsertRowid,
+                meta: {
+                    contentType
+                }
             });
             return NextResponse.json({
                 message: '已添加到待办',

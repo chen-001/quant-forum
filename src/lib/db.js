@@ -21,6 +21,8 @@ export function getDb() {
         ensurePostSummariesSchema(db);
         ensureSummaryLogsSchema(db);
         ensureSchedulerStatusSchema(db);
+        ensureActivityLogsSchema(db);
+        ensureActivityViewsSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -150,6 +152,61 @@ function ensureSchedulerStatusSchema(database) {
         `).run();
     } catch (error) {
         console.error('ensureSchedulerStatusSchema failed:', error);
+    }
+}
+
+function ensureActivityLogsSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                action TEXT NOT NULL,
+                actor_id INTEGER,
+                related_user_id INTEGER,
+                post_id INTEGER,
+                comment_id INTEGER,
+                result_id INTEGER,
+                todo_id INTEGER,
+                favorite_id INTEGER,
+                summary_id INTEGER,
+                meta TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (related_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL,
+                FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE SET NULL,
+                FOREIGN KEY (result_id) REFERENCES results(id) ON DELETE SET NULL,
+                FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE SET NULL,
+                FOREIGN KEY (favorite_id) REFERENCES favorites(id) ON DELETE SET NULL,
+                FOREIGN KEY (summary_id) REFERENCES post_summaries(id) ON DELETE SET NULL
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_logs_related_user_id ON activity_logs(related_user_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_logs_actor_id ON activity_logs(actor_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_logs_post_id ON activity_logs(post_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_logs_category ON activity_logs(category)').run();
+    } catch (error) {
+        console.error('ensureActivityLogsSchema failed:', error);
+    }
+}
+
+function ensureActivityViewsSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS activity_views (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                last_seen_all DATETIME,
+                last_seen_related DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_views_user_id ON activity_views(user_id)').run();
+    } catch (error) {
+        console.error('ensureActivityViewsSchema failed:', error);
     }
 }
 
@@ -1379,6 +1436,147 @@ export const summaryLogQueries = {
 
         const stmt = db.prepare('SELECT COUNT(*) as total FROM summary_generation_logs');
         return stmt.get()?.total || 0;
+    }
+};
+
+export const activityLogQueries = {
+    create: ({
+        category,
+        action,
+        actorId = null,
+        relatedUserId = null,
+        postId = null,
+        commentId = null,
+        resultId = null,
+        todoId = null,
+        favoriteId = null,
+        summaryId = null,
+        meta = null
+    }) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO activity_logs (
+                category, action, actor_id, related_user_id,
+                post_id, comment_id, result_id, todo_id, favorite_id, summary_id, meta
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(
+            category,
+            action,
+            actorId,
+            relatedUserId,
+            postId,
+            commentId,
+            resultId,
+            todoId,
+            favoriteId,
+            summaryId,
+            meta ? JSON.stringify(meta) : null
+        );
+    },
+
+    listPaged: ({ scope = 'all', userId = null, limit = 50, offset = 0 } = {}) => {
+        const db = getDb();
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const safeOffset = Math.max(offset, 0);
+        let whereClause = '';
+        const params = [];
+
+        if (scope === 'related' && userId) {
+            whereClause = 'WHERE (l.related_user_id = ? OR l.actor_id = ?)';
+            params.push(userId, userId);
+        }
+
+        const stmt = db.prepare(`
+            SELECT
+                l.*,
+                a.username as actor_name,
+                ru.username as related_user_name,
+                p.title as post_title
+            FROM activity_logs l
+            LEFT JOIN users a ON a.id = l.actor_id
+            LEFT JOIN users ru ON ru.id = l.related_user_id
+            LEFT JOIN posts p ON p.id = l.post_id
+            ${whereClause}
+            ORDER BY l.created_at DESC
+            LIMIT ? OFFSET ?
+        `);
+        return stmt.all(...params, safeLimit, safeOffset).map(row => ({
+            ...row,
+            meta: row.meta ? JSON.parse(row.meta) : null
+        }));
+    },
+
+    count: ({ scope = 'all', userId = null } = {}) => {
+        const db = getDb();
+        let whereClause = '';
+        const params = [];
+
+        if (scope === 'related' && userId) {
+            whereClause = 'WHERE (related_user_id = ? OR actor_id = ?)';
+            params.push(userId, userId);
+        }
+
+        const stmt = db.prepare(`
+            SELECT COUNT(*) as total
+            FROM activity_logs
+            ${whereClause}
+        `);
+        return stmt.get(...params)?.total || 0;
+    },
+
+    countNew: ({ scope = 'all', userId = null, lastSeenAll = null, lastSeenRelated = null } = {}) => {
+        const db = getDb();
+        let whereClause = '';
+        const params = [];
+
+        if (scope === 'related' && userId) {
+            whereClause = 'WHERE (related_user_id = ? OR actor_id = ?)';
+            params.push(userId, userId);
+            if (lastSeenRelated) {
+                whereClause += ' AND created_at > ?';
+                params.push(lastSeenRelated);
+            }
+        } else if (scope === 'all' && lastSeenAll) {
+            whereClause = 'WHERE created_at > ?';
+            params.push(lastSeenAll);
+        }
+
+        const stmt = db.prepare(`
+            SELECT COUNT(*) as total
+            FROM activity_logs
+            ${whereClause}
+        `);
+        return stmt.get(...params)?.total || 0;
+    }
+};
+
+export const activityViewQueries = {
+    getByUserId: (userId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM activity_views WHERE user_id = ?');
+        return stmt.get(userId);
+    },
+
+    upsert: ({ userId, lastSeenAll = null, lastSeenRelated = null }) => {
+        const db = getDb();
+        const existing = activityViewQueries.getByUserId(userId);
+        if (!existing) {
+            const stmt = db.prepare(`
+                INSERT INTO activity_views (user_id, last_seen_all, last_seen_related)
+                VALUES (?, ?, ?)
+            `);
+            return stmt.run(userId, lastSeenAll, lastSeenRelated);
+        }
+
+        const stmt = db.prepare(`
+            UPDATE activity_views
+            SET last_seen_all = COALESCE(?, last_seen_all),
+                last_seen_related = COALESCE(?, last_seen_related),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        `);
+        return stmt.run(lastSeenAll, lastSeenRelated, userId);
     }
 };
 

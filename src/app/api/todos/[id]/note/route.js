@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { todoQueries } from '@/lib/db';
+import { activityLogQueries, todoQueries } from '@/lib/db';
 import { ocrTextQueries } from '@/lib/ocr-queries';
 
 // PATCH /api/todos/[id]/note - 更新说明
@@ -25,6 +25,14 @@ export async function PATCH(request, { params }) {
         }
 
         todoQueries.updateNote(parseInt(id), note || '');
+        activityLogQueries.create({
+            category: 'favorites_todos',
+            action: 'todo_note_updated',
+            actorId: session.user.id,
+            relatedUserId: session.user.id,
+            postId: todo.post_id,
+            todoId: todo.id
+        });
 
         // 如果note内容包含图片，添加OCR任务
         if (note && note.includes('![')) {

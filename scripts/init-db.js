@@ -402,9 +402,52 @@ db.exec(`
   );
 `);
 
-// 创建摘要表索引
-db.exec(`CREATE INDEX IF NOT EXISTS idx_post_summaries_main_topic ON post_summaries(main_topic)`);
-db.exec(`CREATE INDEX IF NOT EXISTS idx_post_summaries_key_concepts ON post_summaries(key_concepts)`);
+// 创建活动日志表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    action TEXT NOT NULL,
+    actor_id INTEGER,
+    related_user_id INTEGER,
+    post_id INTEGER,
+    comment_id INTEGER,
+    result_id INTEGER,
+    todo_id INTEGER,
+    favorite_id INTEGER,
+    summary_id INTEGER,
+    meta TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (related_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE SET NULL,
+    FOREIGN KEY (result_id) REFERENCES results(id) ON DELETE SET NULL,
+    FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE SET NULL,
+    FOREIGN KEY (favorite_id) REFERENCES favorites(id) ON DELETE SET NULL,
+    FOREIGN KEY (summary_id) REFERENCES post_summaries(id) ON DELETE SET NULL
+  );
+`);
+
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_related_user_id ON activity_logs(related_user_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_actor_id ON activity_logs(actor_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_post_id ON activity_logs(post_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_category ON activity_logs(category)');
+
+// 创建活动查看状态表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS activity_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    last_seen_all DATETIME,
+    last_seen_related DATETIME,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+`);
+
+db.exec('CREATE INDEX IF NOT EXISTS idx_activity_views_user_id ON activity_views(user_id)');
 
 console.log('数据库表创建成功！');
 db.close();
