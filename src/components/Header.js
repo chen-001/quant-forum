@@ -62,6 +62,9 @@ export default function Header() {
                         <Link href="/todos" className="btn btn-ghost">
                             📋 待办
                         </Link>
+                        <Link href="/summaries" className="btn btn-ghost">
+                            📑 摘要
+                        </Link>
                         <ThemeToggle />
                         <div className="user-info">
                             <span>👤 {user.username}</span>

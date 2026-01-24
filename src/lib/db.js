@@ -19,6 +19,8 @@ export function getDb() {
         db.pragma('foreign_keys = ON');
         ensureChatSchema(db);
         ensurePostSummariesSchema(db);
+        ensureSummaryLogsSchema(db);
+        ensureSchedulerStatusSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -70,8 +72,84 @@ function ensurePostSummariesSchema(database) {
             database.prepare(`CREATE INDEX IF NOT EXISTS idx_post_summaries_key_concepts ON post_summaries(key_concepts)`).run();
             console.log('post_summaries table created');
         }
+
+        // 添加用户编辑和AI补充字段
+        const columns = database.prepare('PRAGMA table_info(post_summaries)').all();
+        const columnNames = columns.map(c => c.name);
+
+        // 用户手动编辑的字段
+        const userFields = ['user_main_topic', 'user_main_logic', 'user_factors', 'user_key_concepts', 'user_summary'];
+        for (const field of userFields) {
+            if (!columnNames.includes(field)) {
+                database.prepare(`ALTER TABLE post_summaries ADD COLUMN ${field} TEXT`).run();
+            }
+        }
+
+        // AI对新内容的补充字段
+        const supplementFields = ['ai_supplement_factors', 'ai_supplement_concepts', 'ai_supplement_summary'];
+        for (const field of supplementFields) {
+            if (!columnNames.includes(field)) {
+                database.prepare(`ALTER TABLE post_summaries ADD COLUMN ${field} TEXT`).run();
+            }
+        }
+
+        // 追踪字段
+        if (!columnNames.includes('last_post_hash')) {
+            database.prepare('ALTER TABLE post_summaries ADD COLUMN last_post_hash TEXT').run();
+        }
+        if (!columnNames.includes('last_post_content_snapshot')) {
+            database.prepare('ALTER TABLE post_summaries ADD COLUMN last_post_content_snapshot TEXT').run();
+        }
+        if (!columnNames.includes('last_user_edit_at')) {
+            database.prepare('ALTER TABLE post_summaries ADD COLUMN last_user_edit_at DATETIME').run();
+        }
     } catch (error) {
         console.error('ensurePostSummariesSchema failed:', error);
+    }
+}
+
+function ensureSummaryLogsSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS summary_generation_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                trigger_type TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                post_id INTEGER,
+                summary_type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                note TEXT,
+                started_at DATETIME,
+                finished_at DATETIME,
+                duration_sec REAL,
+                content_hash_before TEXT,
+                content_hash_after TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_summary_logs_created_at ON summary_generation_logs(created_at)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_summary_logs_post_id ON summary_generation_logs(post_id)').run();
+    } catch (error) {
+        console.error('ensureSummaryLogsSchema failed:', error);
+    }
+}
+
+function ensureSchedulerStatusSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS scheduler_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_name TEXT NOT NULL UNIQUE,
+                last_run_at DATETIME,
+                next_run_at DATETIME,
+                last_status TEXT,
+                last_duration_sec REAL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).run();
+    } catch (error) {
+        console.error('ensureSchedulerStatusSchema failed:', error);
     }
 }
 
@@ -367,8 +445,13 @@ export const commentQueries = {
 
     update: (id, authorId, content) => {
         const db = getDb();
+        const comment = db.prepare('SELECT post_id FROM comments WHERE id = ? AND author_id = ?').get(id, authorId);
         const stmt = db.prepare('UPDATE comments SET content = ? WHERE id = ? AND author_id = ?');
-        return stmt.run(content, id, authorId);
+        const result = stmt.run(content, id, authorId);
+        if (result.changes > 0 && comment?.post_id) {
+            postQueries.updateTime(comment.post_id);
+        }
+        return result;
     },
 
     delete: (id, authorId) => {
@@ -553,7 +636,11 @@ export const ideaQueries = {
                 last_editor_id = excluded.last_editor_id,
                 updated_at = CURRENT_TIMESTAMP
         `);
-        return stmt.run(postId, content, editorId);
+        const result = stmt.run(postId, content, editorId);
+        if (result.changes > 0) {
+            postQueries.updateTime(postId);
+        }
+        return result;
     }
 };
 
@@ -960,6 +1047,144 @@ export const postSummaryQueries = {
         return stmt.run(mainTopic, mainLogic, factors, keyConcepts, summary, postId);
     },
 
+    // 更新AI摘要并记录哈希和快照
+    updateWithHash: (postId, mainTopic, mainLogic, factors, keyConcepts, summary, postHash, contentSnapshot) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE post_summaries
+            SET main_topic = ?, main_logic = ?, factors = ?, key_concepts = ?, summary = ?,
+                last_post_hash = ?, last_post_content_snapshot = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = ?
+        `);
+        return stmt.run(mainTopic, mainLogic, factors, keyConcepts, summary, postHash, contentSnapshot, postId);
+    },
+
+    // 创建摘要并记录哈希和快照
+    createWithHash: (postId, mainTopic, mainLogic, factors, keyConcepts, summary, aiModel, postHash, contentSnapshot) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO post_summaries (post_id, main_topic, main_logic, factors, key_concepts, summary, ai_model, last_post_hash, last_post_content_snapshot)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(postId, mainTopic, mainLogic, factors, keyConcepts, summary, aiModel, postHash, contentSnapshot);
+    },
+
+    // 更新用户编辑的字段
+    updateUserEdit: (postId, field, value) => {
+        const db = getDb();
+        const validFields = ['user_main_topic', 'user_main_logic', 'user_factors', 'user_key_concepts', 'user_summary'];
+        if (!validFields.includes(field)) {
+            throw new Error('Invalid field name');
+        }
+        const stmt = db.prepare(`
+            UPDATE post_summaries
+            SET ${field} = ?, last_user_edit_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = ?
+        `);
+        return stmt.run(value, postId);
+    },
+
+    // 批量更新用户编辑
+    updateUserEditBatch: (postId, updates) => {
+        const db = getDb();
+        const validFields = ['user_main_topic', 'user_main_logic', 'user_factors', 'user_key_concepts', 'user_summary'];
+        const setClauses = [];
+        const values = [];
+        for (const [field, value] of Object.entries(updates)) {
+            if (validFields.includes(field)) {
+                setClauses.push(`${field} = ?`);
+                values.push(value);
+            }
+        }
+        if (setClauses.length === 0) return { changes: 0 };
+        values.push(postId);
+        const stmt = db.prepare(`
+            UPDATE post_summaries
+            SET ${setClauses.join(', ')}, last_user_edit_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = ?
+        `);
+        return stmt.run(...values);
+    },
+
+    // 清除用户编辑（恢复AI内容）
+    clearUserEdit: (postId, field = null) => {
+        const db = getDb();
+        if (field) {
+            const validFields = ['user_main_topic', 'user_main_logic', 'user_factors', 'user_key_concepts', 'user_summary'];
+            if (!validFields.includes(field)) {
+                throw new Error('Invalid field name');
+            }
+            // 清除单个字段时，同时清除对应的AI补充
+            const supplementMap = {
+                'user_factors': 'ai_supplement_factors',
+                'user_key_concepts': 'ai_supplement_concepts',
+                'user_summary': 'ai_supplement_summary'
+            };
+            const supplement = supplementMap[field];
+            if (supplement) {
+                const stmt = db.prepare(`
+                    UPDATE post_summaries
+                    SET ${field} = NULL, ${supplement} = NULL, updated_at = CURRENT_TIMESTAMP
+                    WHERE post_id = ?
+                `);
+                return stmt.run(postId);
+            } else {
+                const stmt = db.prepare(`
+                    UPDATE post_summaries
+                    SET ${field} = NULL, updated_at = CURRENT_TIMESTAMP
+                    WHERE post_id = ?
+                `);
+                return stmt.run(postId);
+            }
+        } else {
+            // 清除所有用户编辑和AI补充
+            const stmt = db.prepare(`
+                UPDATE post_summaries
+                SET user_main_topic = NULL, user_main_logic = NULL, user_factors = NULL,
+                    user_key_concepts = NULL, user_summary = NULL,
+                    ai_supplement_factors = NULL, ai_supplement_concepts = NULL, ai_supplement_summary = NULL,
+                    last_user_edit_at = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE post_id = ?
+            `);
+            return stmt.run(postId);
+        }
+    },
+
+    // 更新AI补充内容
+    updateAiSupplement: (postId, supplementFactors, supplementConcepts, supplementSummary, postHash, contentSnapshot) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE post_summaries
+            SET ai_supplement_factors = ?, ai_supplement_concepts = ?, ai_supplement_summary = ?,
+                last_post_hash = ?, last_post_content_snapshot = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE post_id = ?
+        `);
+        return stmt.run(supplementFactors, supplementConcepts, supplementSummary, postHash, contentSnapshot, postId);
+    },
+
+    // 获取合并后的有效摘要（user优先）
+    getEffective: (postId) => {
+        const db = getDb();
+        const raw = db.prepare('SELECT * FROM post_summaries WHERE post_id = ?').get(postId);
+        if (!raw) return null;
+
+        // 计算有效值：用户编辑 + AI补充 > AI原始
+        const effective = {
+            ...raw,
+            effective_main_topic: raw.user_main_topic ?? raw.main_topic,
+            effective_main_logic: raw.user_main_logic ?? raw.main_logic,
+            effective_factors: raw.user_factors ?? raw.factors,
+            effective_key_concepts: raw.user_key_concepts ?? raw.key_concepts,
+            effective_summary: raw.user_summary ?? raw.summary,
+            // AI补充信息
+            has_user_edit: raw.user_main_topic !== null || raw.user_main_logic !== null || raw.user_factors !== null ||
+                raw.user_key_concepts !== null || raw.user_summary !== null,
+            has_supplement: raw.ai_supplement_factors !== null || raw.ai_supplement_concepts !== null || raw.ai_supplement_summary !== null
+        };
+
+        return effective;
+    },
+
     // 获取摘要
     getByPostId: (postId) => {
         const db = getDb();
@@ -967,7 +1192,7 @@ export const postSummaryQueries = {
         return stmt.get(postId);
     },
 
-    // 获取所有摘要
+    // 获取所有摘要（包含有效值计算）
     getAll: () => {
         const db = getDb();
         const stmt = db.prepare(`
@@ -981,7 +1206,19 @@ export const postSummaryQueries = {
             LEFT JOIN users u ON p.author_id = u.id
             ORDER BY ps.updated_at DESC
         `);
-        return stmt.all();
+        const rows = stmt.all();
+        // 计算每行的有效值
+        return rows.map(row => ({
+            ...row,
+            effective_main_topic: row.user_main_topic ?? row.main_topic,
+            effective_main_logic: row.user_main_logic ?? row.main_logic,
+            effective_factors: row.user_factors ?? row.factors,
+            effective_key_concepts: row.user_key_concepts ?? row.key_concepts,
+            effective_summary: row.user_summary ?? row.summary,
+            has_user_edit: row.user_main_topic !== null || row.user_main_logic !== null || row.user_factors !== null ||
+                row.user_key_concepts !== null || row.user_summary !== null,
+            has_supplement: row.ai_supplement_factors !== null || row.ai_supplement_concepts !== null || row.ai_supplement_summary !== null
+        }));
     },
 
     // 搜索摘要（模糊匹配）
@@ -1001,10 +1238,23 @@ export const postSummaryQueries = {
                OR ps.main_logic LIKE ?
                OR ps.key_concepts LIKE ?
                OR ps.summary LIKE ?
+               OR ps.user_main_topic LIKE ?
+               OR ps.user_summary LIKE ?
             ORDER BY ps.updated_at DESC
             LIMIT ?
         `);
-        return stmt.all(pattern, pattern, pattern, pattern, limit);
+        const rows = stmt.all(pattern, pattern, pattern, pattern, pattern, pattern, limit);
+        return rows.map(row => ({
+            ...row,
+            effective_main_topic: row.user_main_topic ?? row.main_topic,
+            effective_main_logic: row.user_main_logic ?? row.main_logic,
+            effective_factors: row.user_factors ?? row.factors,
+            effective_key_concepts: row.user_key_concepts ?? row.key_concepts,
+            effective_summary: row.user_summary ?? row.summary,
+            has_user_edit: row.user_main_topic !== null || row.user_main_logic !== null || row.user_factors !== null ||
+                row.user_key_concepts !== null || row.user_summary !== null,
+            has_supplement: row.ai_supplement_factors !== null || row.ai_supplement_concepts !== null || row.ai_supplement_summary !== null
+        }));
     },
 
     // 检查是否存在
@@ -1012,5 +1262,152 @@ export const postSummaryQueries = {
         const db = getDb();
         const stmt = db.prepare('SELECT 1 FROM post_summaries WHERE post_id = ?');
         return stmt.get(postId);
+    },
+
+    // 检查是否有用户编辑
+    hasUserEdit: (postId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT 1 FROM post_summaries
+            WHERE post_id = ? AND (
+                user_main_topic IS NOT NULL OR user_main_logic IS NOT NULL OR
+                user_factors IS NOT NULL OR user_key_concepts IS NOT NULL OR user_summary IS NOT NULL
+            )
+        `);
+        return !!stmt.get(postId);
+    }
+};
+
+export const summaryLogQueries = {
+    create: ({
+        triggerType,
+        scope,
+        postId = null,
+        summaryType,
+        status,
+        note = null,
+        startedAt = null,
+        finishedAt = null,
+        durationSec = null,
+        contentHashBefore = null,
+        contentHashAfter = null
+    }) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO summary_generation_logs (
+                trigger_type, scope, post_id, summary_type, status, note,
+                started_at, finished_at, duration_sec,
+                content_hash_before, content_hash_after
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(
+            triggerType,
+            scope,
+            postId,
+            summaryType,
+            status,
+            note,
+            startedAt,
+            finishedAt,
+            durationSec,
+            contentHashBefore,
+            contentHashAfter
+        );
+    },
+
+    listRecent: (limit = 100) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT
+                l.*,
+                p.title as post_title
+            FROM summary_generation_logs l
+            LEFT JOIN posts p ON p.id = l.post_id
+            ORDER BY l.created_at DESC
+            LIMIT ?
+        `);
+        return stmt.all(limit);
+    },
+
+    listPaged: ({ limit = 100, offset = 0, keyword = '' } = {}) => {
+        const db = getDb();
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const safeOffset = Math.max(offset, 0);
+        const hasKeyword = !!keyword && keyword.trim();
+        const pattern = hasKeyword ? `%${keyword.trim()}%` : null;
+
+        if (hasKeyword) {
+            const stmt = db.prepare(`
+                SELECT
+                    l.*,
+                    p.title as post_title
+                FROM summary_generation_logs l
+                LEFT JOIN posts p ON p.id = l.post_id
+                WHERE p.title LIKE ? OR l.note LIKE ?
+                ORDER BY l.created_at DESC
+                LIMIT ? OFFSET ?
+            `);
+            return stmt.all(pattern, pattern, safeLimit, safeOffset);
+        }
+
+        const stmt = db.prepare(`
+            SELECT
+                l.*,
+                p.title as post_title
+            FROM summary_generation_logs l
+            LEFT JOIN posts p ON p.id = l.post_id
+            ORDER BY l.created_at DESC
+            LIMIT ? OFFSET ?
+        `);
+        return stmt.all(safeLimit, safeOffset);
+    },
+
+    count: (keyword = '') => {
+        const db = getDb();
+        const hasKeyword = !!keyword && keyword.trim();
+        const pattern = hasKeyword ? `%${keyword.trim()}%` : null;
+
+        if (hasKeyword) {
+            const stmt = db.prepare(`
+                SELECT COUNT(*) as total
+                FROM summary_generation_logs l
+                LEFT JOIN posts p ON p.id = l.post_id
+                WHERE p.title LIKE ? OR l.note LIKE ?
+            `);
+            return stmt.get(pattern, pattern)?.total || 0;
+        }
+
+        const stmt = db.prepare('SELECT COUNT(*) as total FROM summary_generation_logs');
+        return stmt.get()?.total || 0;
+    }
+};
+
+export const schedulerStatusQueries = {
+    get: (jobName) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM scheduler_status WHERE job_name = ?');
+        return stmt.get(jobName);
+    },
+
+    upsert: (jobName, { lastRunAt = undefined, nextRunAt = null, lastStatus = null, lastDurationSec = null }) => {
+        const db = getDb();
+
+        // 如果 lastRunAt 未传递，则从数据库获取当前值
+        if (lastRunAt === undefined) {
+            const current = db.prepare('SELECT last_run_at FROM scheduler_status WHERE job_name = ?').get(jobName);
+            lastRunAt = current?.last_run_at || null;
+        }
+
+        const stmt = db.prepare(`
+            INSERT INTO scheduler_status (job_name, last_run_at, next_run_at, last_status, last_duration_sec, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(job_name) DO UPDATE SET
+                last_run_at = excluded.last_run_at,
+                next_run_at = excluded.next_run_at,
+                last_status = excluded.last_status,
+                last_duration_sec = excluded.last_duration_sec,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+        return stmt.run(jobName, lastRunAt, nextRunAt, lastStatus, lastDurationSec);
     }
 };

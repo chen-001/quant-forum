@@ -59,6 +59,9 @@ export default function MobileDrawer({ isOpen, onClose, user, onLogout }) {
                             <Link href="/todos" className="mobile-drawer-item" onClick={handleItemClick}>
                                 📋 待办
                             </Link>
+                            <Link href="/summaries" className="mobile-drawer-item" onClick={handleItemClick}>
+                                📑 摘要
+                            </Link>
                             <button onClick={handleLogoutClick} className="mobile-drawer-item mobile-drawer-logout">
                                 退出
                             </button>
