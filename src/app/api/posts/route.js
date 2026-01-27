@@ -15,9 +15,6 @@ export async function GET(request) {
         const offset = parseInt(searchParams.get('offset')) || 0;
         const search = searchParams.get('search') || '';
 
-        console.log('API: Fetching posts with params:', { orderBy, order, limit, offset, search });
-        console.log('API: CWD:', process.cwd());
-
         try {
             let posts;
             if (search.trim()) {
@@ -25,7 +22,6 @@ export async function GET(request) {
             } else {
                 posts = postQueries.list(orderBy, order, limit, offset);
             }
-            console.log('API: Found posts count:', posts.length);
             return NextResponse.json({ posts });
         } catch (dbError) {
             console.error('API: Database query error:', dbError);

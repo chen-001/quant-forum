@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { RatingBadges } from '@/components/RatingPanel';
@@ -17,6 +17,58 @@ const SORT_OPTIONS = [
   { key: 'avg_completeness', label: '完善程度' },
 ];
 
+// 格式化日期函数（移到组件外，避免每次渲染重新创建）
+function formatDate(dateStr) {
+  const date = new Date(dateStr + 'Z');
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  });
+}
+
+// 优化后的PostCard组件
+const PostCard = memo(function PostCard({ post }) {
+  return (
+    <article className="post-card">
+      <div className="post-info">
+        <h2 className="post-title">
+          {post.is_pinned ? (
+            <span style={{
+              marginRight: '8px',
+              padding: '2px 6px',
+              background: 'var(--warning)',
+              color: '#000',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '600'
+            }}>📌 置顶</span>
+          ) : null}
+          {post.title}
+        </h2>
+        <div className="post-meta">
+          <span className="post-meta-item">
+            👤 {post.author_name}
+          </span>
+          <span className="post-meta-item">
+            📅 {formatDate(post.created_at)}
+          </span>
+          <span className="post-meta-item">
+            🔗 {post.link_count} 个链接
+          </span>
+          <span className="post-meta-item">
+            💬 {post.comment_count} 条评论
+          </span>
+        </div>
+      </div>
+      <RatingBadges ratings={post} />
+    </article>
+  );
+});
+
 export default function HomePage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +76,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
-  useEffect(() => {
-    fetchPosts();
-  }, [sortBy, searchQuery]);
-
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
       let url = `/api/posts?orderBy=${sortBy}&order=DESC`;
@@ -43,24 +91,32 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sortBy, searchQuery]);
 
-  const handleSearch = (e) => {
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
     setSearchQuery(searchInput);
-  };
+  }, [searchInput]);
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr + 'Z'); // 确保解析为UTC时间
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    });
-  };
+  const clearSearch = useCallback(() => {
+    setSearchInput('');
+    setSearchQuery('');
+  }, []);
+
+  // 缓存帖子列表渲染
+  const postsGrid = useMemo(() => (
+    <div className="posts-grid">
+      {posts.map(post => (
+        <Link href={`/post/${post.id}`} key={post.id} style={{ textDecoration: 'none' }}>
+          <PostCard post={post} />
+        </Link>
+      ))}
+    </div>
+  ), [posts]);
 
   return (
     <>
@@ -94,10 +150,7 @@ export default function HomePage() {
                 {searchInput && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setSearchInput('');
-                      setSearchQuery('');
-                    }}
+                    onClick={clearSearch}
                     style={{
                       position: 'absolute',
                       right: '12px',
@@ -151,45 +204,7 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <div className="posts-grid">
-            {posts.map(post => (
-              <Link href={`/post/${post.id}`} key={post.id} style={{ textDecoration: 'none' }}>
-                <article className="post-card">
-                  <div className="post-info">
-                    <h2 className="post-title">
-                      {post.is_pinned ? (
-                        <span style={{
-                          marginRight: '8px',
-                          padding: '2px 6px',
-                          background: 'var(--warning)',
-                          color: '#000',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '600'
-                        }}>📌 置顶</span>
-                      ) : null}
-                      {post.title}
-                    </h2>
-                    <div className="post-meta">
-                      <span className="post-meta-item">
-                        👤 {post.author_name}
-                      </span>
-                      <span className="post-meta-item">
-                        📅 {formatDate(post.created_at)}
-                      </span>
-                      <span className="post-meta-item">
-                        🔗 {post.link_count} 个链接
-                      </span>
-                      <span className="post-meta-item">
-                        💬 {post.comment_count} 条评论
-                      </span>
-                    </div>
-                  </div>
-                  <RatingBadges ratings={post} />
-                </article>
-              </Link>
-            ))}
-          </div>
+          postsGrid
         )}
       </main>
     </>

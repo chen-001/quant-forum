@@ -33,7 +33,6 @@ db.exec(`
 const addColumnIfNotExists = (table, column, definition) => {
   try {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-    console.log(`Added column ${column} to table ${table}`);
   } catch (e) {
     // 列已存在，忽略错误
   }
@@ -449,5 +448,4 @@ db.exec(`
 
 db.exec('CREATE INDEX IF NOT EXISTS idx_activity_views_user_id ON activity_views(user_id)');
 
-console.log('数据库表创建成功！');
 db.close();

@@ -13,7 +13,7 @@ async function getSummarySession() {
     if (!summarySessionId) {
       throw new Error('OpenCode会话创建失败');
     }
-    console.log('创建摘要生成会话:', summarySessionId);
+
   }
   return summarySessionId;
 }
@@ -196,7 +196,6 @@ export async function generatePostSummary(postId, forceRegenerate = false) {
   if (!forceRegenerate) {
     const existing = postSummaryQueries.getByPostId(postId);
     if (existing && existing.last_post_hash === contentHash) {
-      console.log(`帖子 ${postId} 内容未变化，跳过更新`);
       return null;
     }
   }
@@ -304,7 +303,6 @@ export async function generateSupplementSummary(postId) {
 
   // 检查是否有内容变化
   if (existing.last_post_hash === contentHash) {
-    console.log(`帖子 ${postId} 内容未变化，跳过增量更新`);
     return null;
   }
 
@@ -316,7 +314,6 @@ export async function generateSupplementSummary(postId) {
   const diffContent = computeContentDiff(oldContent, newContent);
 
   if (!diffContent.trim()) {
-    console.log(`帖子 ${postId} 无有效新增内容`);
     return null;
   }
 
@@ -445,7 +442,6 @@ export async function smartUpdateSummary(postId, forceFullUpdate = false) {
 
   if (hasUserEdit && !forceFullUpdate) {
     // 有用户编辑：生成增量摘要
-    console.log(`帖子 ${postId} 有用户编辑，生成增量摘要`);
     const supplement = await generateSupplementSummary(postId);
     if (supplement) {
       saveSupplementSummary(supplement);
@@ -454,7 +450,6 @@ export async function smartUpdateSummary(postId, forceFullUpdate = false) {
     return { type: 'skip', reason: '内容无变化或无新增内容' };
   } else {
     // 无用户编辑或强制更新：完整更新
-    console.log(`帖子 ${postId} 无用户编辑，完整更新摘要`);
     const summary = await generatePostSummary(postId, forceFullUpdate);
     if (summary) {
       savePostSummary(summary);
@@ -554,7 +549,6 @@ export async function generateSummariesForExistingPosts(forceFullUpdate = false)
             contentHashBefore,
             contentHashAfter
           });
-          console.log(`帖子 ${post.id} (${post.title}) 近3天无变化，跳过`);
           continue;
         }
       }
@@ -576,7 +570,6 @@ export async function generateSummariesForExistingPosts(forceFullUpdate = false)
           contentHashBefore,
           contentHashAfter
         });
-        console.log(`帖子 ${post.id} (${post.title}) 完整更新`);
       } else if (result.type === 'supplement') {
         supplementCount++;
         contentHashAfter = result.data?.content_hash || contentHashAfter;
@@ -593,7 +586,6 @@ export async function generateSummariesForExistingPosts(forceFullUpdate = false)
           contentHashBefore,
           contentHashAfter
         });
-        console.log(`帖子 ${post.id} (${post.title}) 增量更新`);
       } else {
         skippedCount++;
         summaryLogQueries.create({
@@ -609,7 +601,6 @@ export async function generateSummariesForExistingPosts(forceFullUpdate = false)
           contentHashBefore,
           contentHashAfter
         });
-        console.log(`帖子 ${post.id} (${post.title}) 跳过: ${result.reason}`);
       }
 
       if (posts.indexOf(post) < posts.length - 1) {
@@ -630,7 +621,6 @@ export async function generateSummariesForExistingPosts(forceFullUpdate = false)
         contentHashBefore,
         contentHashAfter
       });
-      console.error(`帖子 ${post.id} 更新失败:`, error.message);
     }
   }
 

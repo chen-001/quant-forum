@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
@@ -20,10 +20,52 @@ marked.setOptions({
     gfm: true
 });
 
-// 渲染 LaTeX
+// 简单的LRU缓存实现
+class LRUCache {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.cache = new Map();
+    }
+
+    get(key) {
+        if (!this.cache.has(key)) return undefined;
+        // 访问时移动到末尾（最近使用）
+        const value = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, value);
+        return value;
+    }
+
+    set(key, value) {
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        } else if (this.cache.size >= this.maxSize) {
+            // 删除最久未使用的（第一个）
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        this.cache.set(key, value);
+    }
+
+    has(key) {
+        return this.cache.has(key);
+    }
+}
+
+// 使用LRU缓存替代普通Map
+const latexCache = new LRUCache(100);
+const markdownCache = new LRUCache(50);
+
+// 渲染 LaTeX（带LRU缓存）
 function renderLatex(text) {
+    if (latexCache.has(text)) {
+        return latexCache.get(text);
+    }
+
+    let result = text;
+
     // 行内公式 $...$
-    text = text.replace(/\$([^\$\n]+)\$/g, (match, formula) => {
+    result = result.replace(/\$([^\$\n]+)\$/g, (match, formula) => {
         try {
             return katex.renderToString(formula, { throwOnError: false });
         } catch (e) {
@@ -32,7 +74,7 @@ function renderLatex(text) {
     });
 
     // 块级公式 $$...$$
-    text = text.replace(/\$\$([^\$]+)\$\$/g, (match, formula) => {
+    result = result.replace(/\$\$([^\$]+)\$\$/g, (match, formula) => {
         try {
             return katex.renderToString(formula, { displayMode: true, throwOnError: false });
         } catch (e) {
@@ -40,46 +82,52 @@ function renderLatex(text) {
         }
     });
 
-    return text;
+    latexCache.set(text, result);
+    return result;
 }
 
-export default function MarkdownRenderer({ content, postId, onFavorite, onTodo, user }) {
-    const [html, setHtml] = useState('');
+function parseMarkdown(content) {
+    if (!content) return '';
+
+    if (markdownCache.has(content)) {
+        return markdownCache.get(content);
+    }
+
+    let rendered = marked.parse(content);
+    rendered = renderLatex(rendered);
+
+    markdownCache.set(content, rendered);
+    return rendered;
+}
+
+const MarkdownRenderer = memo(function MarkdownRenderer({ content, postId, onFavorite, onTodo, user }) {
+    // 使用useMemo缓存HTML解析结果
+    const html = useMemo(() => parseMarkdown(content), [content]);
+
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [currentImage, setCurrentImage] = useState(null);
     const containerRef = useRef(null);
 
-    useEffect(() => {
-        if (!content) {
-            setHtml('');
-            return;
+    const handleImageClick = useCallback((e) => {
+        const img = e.target.closest('img');
+        if (img && !img.closest('.no-lightbox')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setCurrentImage({
+                src: img.src,
+                alt: img.alt || img.title || ''
+            });
+            setLightboxOpen(true);
         }
-
-        let rendered = marked.parse(content);
-        rendered = renderLatex(rendered);
-        setHtml(rendered);
-    }, [content]);
+    }, []);
 
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        const handleImageClick = (e) => {
-            const img = e.target.closest('img');
-            if (img && !img.closest('.no-lightbox')) {
-                e.preventDefault();
-                e.stopPropagation();
-                setCurrentImage({
-                    src: img.src,
-                    alt: img.alt || img.title || ''
-                });
-                setLightboxOpen(true);
-            }
-        };
-
         container.addEventListener('click', handleImageClick);
         return () => container.removeEventListener('click', handleImageClick);
-    }, [html]);
+    }, [handleImageClick]);
 
     return (
         <>
@@ -99,10 +147,12 @@ export default function MarkdownRenderer({ content, postId, onFavorite, onTodo, 
             />
         </>
     );
-}
+});
+
+export default MarkdownRenderer;
 
 // Markdown 编辑器组件
-export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }) {
+export const MarkdownEditor = memo(function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }) {
     const textareaRef = useRef(null);
     const [uploading, setUploading] = useState(false);
 
@@ -120,9 +170,9 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }
                 break;
             }
         }
-    }, []);
+    }, [onChange, value]);
 
-    const uploadFile = async (file) => {
+    const uploadFile = useCallback(async (file) => {
         setUploading(true);
         try {
             const formData = new FormData();
@@ -151,15 +201,15 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }
         } finally {
             setUploading(false);
         }
-    };
+    }, [value, onChange]);
 
-    const handleFileSelect = async (e) => {
+    const handleFileSelect = useCallback(async (e) => {
         const file = e.target.files?.[0];
         if (file) {
             await uploadFile(file);
             e.target.value = '';
         }
-    };
+    }, [uploadFile]);
 
     return (
         <div className="markdown-editor">
@@ -185,4 +235,4 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }
             </div>
         </div>
     );
-}
+});

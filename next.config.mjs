@@ -1,11 +1,27 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 禁用 Turbopack，使用 Webpack（解决中文路径问题）
-  experimental: {
-    // 不使用 turbopack
-  },
   // 允许使用 better-sqlite3 原生模块
   serverExternalPackages: ['better-sqlite3'],
+
+  // 生产环境优化
+  compress: true,
+  poweredByHeader: false,
+
+  // 禁用请求日志
+  logging: {
+    fetches: {
+      fullUrl: false,
+    },
+  },
+
+  // 实验性功能
+  experimental: {
+    // 启用 optimizePackageImports 自动优化导入
+    optimizePackageImports: ['marked', 'highlight.js', 'katex'],
+  },
+
+  // Turbopack配置（Next.js 16默认使用）
+  turbopack: {},
 };
 
 export default nextConfig;

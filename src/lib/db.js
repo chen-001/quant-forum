@@ -12,8 +12,6 @@ export function getDb() {
         const __dirname = path.dirname(__filename);
         const dbPath = path.join(__dirname, '../../data/forum.db');
 
-        console.log('Database path:', dbPath);
-
         db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
@@ -72,7 +70,6 @@ function ensurePostSummariesSchema(database) {
             `).run();
             database.prepare(`CREATE INDEX IF NOT EXISTS idx_post_summaries_main_topic ON post_summaries(main_topic)`).run();
             database.prepare(`CREATE INDEX IF NOT EXISTS idx_post_summaries_key_concepts ON post_summaries(key_concepts)`).run();
-            console.log('post_summaries table created');
         }
 
         // 添加用户编辑和AI补充字段
@@ -215,7 +212,6 @@ async function startOCRQueue() {
     try {
         const { ocrQueue } = await import('./ocr-queue.js');
         ocrQueue.start(db);
-        console.log('OCR队列已启动');
     } catch (error) {
         console.error('启动OCR队列失败:', error);
     }
