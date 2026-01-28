@@ -27,7 +27,12 @@ export async function GET(request) {
                 scope: 'all',
                 lastSeenAll: views?.last_seen_all || null
             });
-            return NextResponse.json({ relatedCount, allCount });
+            return NextResponse.json({
+                relatedCount,
+                allCount,
+                lastSeenRelated: views?.last_seen_related || null,
+                lastSeenAll: views?.last_seen_all || null
+            });
         }
 
         const activities = activityLogQueries.listPaged({

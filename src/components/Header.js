@@ -96,7 +96,10 @@ export default function Header() {
                         </Link>
                         <ThemeToggle />
                         <div className="user-info">
-                            <Link href="/activities" className="btn btn-ghost">
+                            <Link href="/activities" className="btn btn-ghost" onClick={() => {
+                                // 点击时立即清零，避免数字残留
+                                setActivityCounts({ related: 0, all: 0 });
+                            }}>
                                 {user.username} {activityCounts.related}|{activityCounts.all}
                             </Link>
                         </div>

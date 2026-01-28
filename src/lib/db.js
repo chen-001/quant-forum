@@ -1488,11 +1488,17 @@ export const activityLogQueries = {
                 l.*,
                 a.username as actor_name,
                 ru.username as related_user_name,
-                p.title as post_title
+                p.title as post_title,
+                c.content as comment_content,
+                r.content as result_content,
+                ps.main_topic as summary_main_topic
             FROM activity_logs l
             LEFT JOIN users a ON a.id = l.actor_id
             LEFT JOIN users ru ON ru.id = l.related_user_id
             LEFT JOIN posts p ON p.id = l.post_id
+            LEFT JOIN comments c ON c.id = l.comment_id
+            LEFT JOIN results r ON r.id = l.result_id
+            LEFT JOIN post_summaries ps ON ps.id = l.summary_id
             ${whereClause}
             ORDER BY l.created_at DESC
             LIMIT ? OFFSET ?
