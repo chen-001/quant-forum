@@ -45,10 +45,14 @@ export default function PostDetailPage({ params }) {
     const [addingLink, setAddingLink] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(35); // 默认宽度 35vw
     const [isResizing, setIsResizing] = useState(false);
+    const [leftPanelWidth, setLeftPanelWidth] = useState(5); // 左侧标签面板默认宽度 5vw
+    const [isLeftPanelResizing, setIsLeftPanelResizing] = useState(false);
     const saveTimeoutRef = useRef(null);
     const sidebarRef = useRef(null);
     const startXRef = useRef(0);
     const startWidthRef = useRef(35);
+    const leftPanelStartXRef = useRef(0);
+    const leftPanelStartWidthRef = useRef(5);
     const router = useRouter();
 
     // 检测 Electron 环境
@@ -92,6 +96,41 @@ export default function PostDetailPage({ params }) {
             document.removeEventListener('touchend', handleEnd);
         };
     }, [isResizing]);
+
+    // 左侧面板拖动调整宽度
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isLeftPanelResizing) return;
+            const deltaX = e.clientX - leftPanelStartXRef.current;
+            const newWidth = Math.max(3, Math.min(20, leftPanelStartWidthRef.current + (deltaX / window.innerWidth) * 100));
+            setLeftPanelWidth(newWidth);
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isLeftPanelResizing) return;
+            const deltaX = e.touches[0].clientX - leftPanelStartXRef.current;
+            const newWidth = Math.max(3, Math.min(20, leftPanelStartWidthRef.current + (deltaX / window.innerWidth) * 100));
+            setLeftPanelWidth(newWidth);
+        };
+
+        const handleEnd = () => {
+            setIsLeftPanelResizing(false);
+        };
+
+        if (isLeftPanelResizing) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleEnd);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleEnd);
+        };
+    }, [isLeftPanelResizing]);
 
     // 防抖保存表格数据
     const saveTableData = useCallback(async (data) => {
@@ -1168,9 +1207,12 @@ export default function PostDetailPage({ params }) {
                                 startWidthRef.current = sidebarWidth;
                             }}
                         />
-                        <div className="discussion-section">
+                        <div className={`discussion-section ${isLeftPanelResizing ? 'left-panel-resizing' : ''}`}>
                             {/* 左侧控制面板 */}
-                            <div className="discussion-sidebar">
+                            <div
+                                className="discussion-sidebar"
+                                style={{ width: `${leftPanelWidth}vw` }}
+                            >
                                 <div className="discussion-header">
                                     💬 想法讨论区 ({comments.length})
                                 </div>
@@ -1242,6 +1284,21 @@ export default function PostDetailPage({ params }) {
                                         找到 {filteredCommentTree.length} 条匹配
                                     </div>
                                 )}
+                                {/* 左侧面板拖动调整宽度的手柄 - 放在标签栏右侧 */}
+                                <div
+                                    className="left-panel-resize-handle"
+                                    onMouseDown={(e) => {
+                                        setIsLeftPanelResizing(true);
+                                        leftPanelStartXRef.current = e.clientX;
+                                        leftPanelStartWidthRef.current = leftPanelWidth;
+                                        e.preventDefault();
+                                    }}
+                                    onTouchStart={(e) => {
+                                        setIsLeftPanelResizing(true);
+                                        leftPanelStartXRef.current = e.touches[0].clientX;
+                                        leftPanelStartWidthRef.current = leftPanelWidth;
+                                    }}
+                                />
                             </div>
 
                             {/* 右侧评论区域 */}

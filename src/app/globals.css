@@ -488,6 +488,33 @@ a:hover {
   pointer-events: auto;
 }
 
+/* 左侧面板拖动调整宽度的手柄 */
+.left-panel-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 102;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.left-panel-resize-handle:hover {
+  background: var(--primary);
+}
+
+.discussion-section.left-panel-resizing .left-panel-resize-handle,
+.discussion-section.left-panel-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.discussion-section.left-panel-resizing {
+  pointer-events: auto;
+}
+
 /* 网页预览区 */
 .preview-section {
   background: var(--bg-card);
@@ -632,6 +659,8 @@ a:hover {
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   overflow-y: auto;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .discussion-header {
