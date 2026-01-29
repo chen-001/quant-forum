@@ -426,12 +426,12 @@ a:hover {
   padding-top: 0;
   box-sizing: border-box;
   width: 100%;
-  padding-right: 35vw;
+  /* padding-right 由 JS 动态控制 */
 }
 
 /* 帖子详情页标题区域，避免被侧边栏覆盖 */
 .post-detail-header {
-  padding-right: 35vw;
+  /* padding-right 由 JS 动态控制 */
   box-sizing: border-box;
 }
 
@@ -459,6 +459,33 @@ a:hover {
   flex-direction: column;
   z-index: 100;
   box-sizing: border-box;
+}
+
+/* 侧边栏拖动调整宽度的手柄 */
+.sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 101;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--primary);
+}
+
+.post-sidebar.resizing .sidebar-resize-handle,
+.post-sidebar.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.post-sidebar.resizing {
+  pointer-events: auto;
 }
 
 /* 网页预览区 */

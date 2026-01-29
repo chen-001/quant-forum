@@ -43,7 +43,12 @@ export default function PostDetailPage({ params }) {
     const [newLinkTitle, setNewLinkTitle] = useState('');
     const [newLinkUrl, setNewLinkUrl] = useState('');
     const [addingLink, setAddingLink] = useState(false);
+    const [sidebarWidth, setSidebarWidth] = useState(35); // 默认宽度 35vw
+    const [isResizing, setIsResizing] = useState(false);
     const saveTimeoutRef = useRef(null);
+    const sidebarRef = useRef(null);
+    const startXRef = useRef(0);
+    const startWidthRef = useRef(35);
     const router = useRouter();
 
     // 检测 Electron 环境
@@ -52,6 +57,41 @@ export default function PostDetailPage({ params }) {
             setIsElectron(true);
         }
     }, []);
+
+    // 侧边栏拖动调整宽度
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isResizing) return;
+            const deltaX = startXRef.current - e.clientX;
+            const newWidth = Math.max(20, Math.min(60, startWidthRef.current + (deltaX / window.innerWidth) * 100));
+            setSidebarWidth(newWidth);
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isResizing) return;
+            const deltaX = startXRef.current - e.touches[0].clientX;
+            const newWidth = Math.max(20, Math.min(60, startWidthRef.current + (deltaX / window.innerWidth) * 100));
+            setSidebarWidth(newWidth);
+        };
+
+        const handleEnd = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleEnd);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleEnd);
+        };
+    }, [isResizing]);
 
     // 防抖保存表格数据
     const saveTableData = useCallback(async (data) => {
@@ -573,7 +613,7 @@ export default function PostDetailPage({ params }) {
             <AIChatButton pageType="post_detail" contextId={parseInt(id)} />
             <main className="container">
                 {/* 帖子标题 */}
-                <div className="post-detail-header" style={{ marginBottom: '0' }}>
+                <div className="post-detail-header" style={{ marginBottom: '0', paddingRight: `${sidebarWidth}vw` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
                             {post.title}
@@ -689,7 +729,7 @@ export default function PostDetailPage({ params }) {
                 </div>
 
                 {/* 主体布局：预览区 + 讨论区 */}
-                <div className="post-detail">
+                <div className="post-detail" style={{ paddingRight: `${sidebarWidth}vw` }}>
                     {/* 预览区容器：包含正文和AI链接 */}
                     <div className="preview-section">
                         {/* 正文内容 - 使用 InteractiveContent 支持逐行评论和高亮 */}
@@ -1108,7 +1148,26 @@ export default function PostDetailPage({ params }) {
                     )}
 
                     {/* 想法讨论区（侧边栏） */}
-                    <div className="post-sidebar">
+                    <div
+                        ref={sidebarRef}
+                        className={`post-sidebar ${isResizing ? 'resizing' : ''}`}
+                        style={{ width: `${sidebarWidth}vw`, paddingRight: 0 }}
+                    >
+                        {/* 拖动调整宽度的手柄 */}
+                        <div
+                            className="sidebar-resize-handle"
+                            onMouseDown={(e) => {
+                                setIsResizing(true);
+                                startXRef.current = e.clientX;
+                                startWidthRef.current = sidebarWidth;
+                                e.preventDefault();
+                            }}
+                            onTouchStart={(e) => {
+                                setIsResizing(true);
+                                startXRef.current = e.touches[0].clientX;
+                                startWidthRef.current = sidebarWidth;
+                            }}
+                        />
                         <div className="discussion-section">
                             {/* 左侧控制面板 */}
                             <div className="discussion-sidebar">
