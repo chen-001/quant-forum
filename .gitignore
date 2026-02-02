@@ -54,3 +54,11 @@ dist-electron/*
 data/batch_ocr_progress.json
 data/ocr_failed.txt
 test_ocr.py
+.vtcode/README.md
+.vtcode/tool-policy.json
+.vtcode/checkpoints/turn_1.json
+.vtcode/checkpoints/turn_2.json
+.vtcode/mcp/tools/INDEX.md
+.vtcode/skills/INDEX.md
+.vtcode/terminals/INDEX.md
+vtcode.toml

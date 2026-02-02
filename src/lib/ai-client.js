@@ -17,6 +17,13 @@ const API_URL = process.env.ZHIPUAI_API_URL
   || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const DEFAULT_MODEL = process.env.ZHIPUAI_MODEL || config.zhipuai_model || 'glm-4.7';
 
+// Zenmux AI 配置 (moonshotai/kimi-k2.5)
+const ZENMUX_API_KEY = process.env.ZENMUX_API_KEY || config.zenmux_api_key;
+const ZENMUX_API_URL = process.env.ZENMUX_API_URL
+  || config.zenmux_api_url
+  || 'https://zenmux.ai/api/anthropic/v1/messages';
+const ZENMUX_MODEL = process.env.ZENMUX_MODEL || config.zenmux_model || 'moonshotai/kimi-k2.5';
+
 /**
  * 调用智谱AI GLM-4.7 API（支持Function Calling）
  * @param {Array} messages - 消息历史
@@ -58,6 +65,86 @@ export async function callZhipuAI(messages, tools = null, model = DEFAULT_MODEL)
   }
 
   return await response.json();
+}
+
+/**
+ * 调用 Zenmux AI API (moonshotai/kimi-k2.5)
+ * 支持传入文字和图片(base64格式)
+ * @param {string} textContent - 文字内容
+ * @param {Array<string>} imageBase64List - base64编码的图片列表
+ * @returns {Promise<Object>} API响应
+ */
+export async function callZenmuxAI(textContent, imageBase64List = []) {
+  if (!ZENMUX_API_KEY) {
+    throw new Error('未配置 Zenmux AI API Key');
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${ZENMUX_API_KEY}`,
+    'anthropic-version': '2023-06-01'
+  };
+
+  // 构建消息内容，支持多模态
+  const content = [];
+
+  // 添加所有图片
+  for (const base64Image of imageBase64List) {
+    content.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/png',
+        data: base64Image.replace(/^data:image\/\w+;base64,/, '')
+      }
+    });
+  }
+
+  // 添加文字内容
+  if (textContent && textContent.trim()) {
+    content.push({
+      type: 'text',
+      text: textContent
+    });
+  }
+
+  const body = {
+    model: ZENMUX_MODEL,
+    max_tokens: 64000,
+    messages: [
+      {
+        role: 'user',
+        content: content.length === 1 && content[0].type === 'text'
+          ? content[0].text  // 只有文字时直接传字符串
+          : content  // 有多模态内容时传数组
+      }
+    ]
+  };
+
+  const response = await fetch(ZENMUX_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Zenmux AI API错误: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+
+  // 转换为与 OpenAI/智谱AI 兼容的格式
+  return {
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: data.content?.[0]?.text || data.completion || ''
+        }
+      }
+    ]
+  };
 }
 
 /**

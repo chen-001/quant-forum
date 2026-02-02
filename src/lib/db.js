@@ -21,6 +21,7 @@ export function getDb() {
         ensureSchedulerStatusSchema(db);
         ensureActivityLogsSchema(db);
         ensureActivityViewsSchema(db);
+        ensureCommentExplorationsSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -204,6 +205,28 @@ function ensureActivityViewsSchema(database) {
         database.prepare('CREATE INDEX IF NOT EXISTS idx_activity_views_user_id ON activity_views(user_id)').run();
     } catch (error) {
         console.error('ensureActivityViewsSchema failed:', error);
+    }
+}
+
+// 评论探索记录表
+function ensureCommentExplorationsSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS comment_explorations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id INTEGER NOT NULL UNIQUE,
+                variants TEXT NOT NULL,
+                user_modified_variants TEXT,
+                default_code TEXT DEFAULT '000001',
+                default_date INTEGER DEFAULT 20220819,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_comment_explorations_comment_id ON comment_explorations(comment_id)').run();
+    } catch (error) {
+        console.error('ensureCommentExplorationsSchema failed:', error);
     }
 }
 
@@ -1609,5 +1632,62 @@ export const schedulerStatusQueries = {
                 updated_at = CURRENT_TIMESTAMP
         `);
         return stmt.run(jobName, lastRunAt, nextRunAt, lastStatus, lastDurationSec);
+    }
+};
+
+// 评论探索记录相关操作
+export const commentExplorationQueries = {
+    getByCommentId: (commentId) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM comment_explorations WHERE comment_id = ?');
+        const row = stmt.get(commentId);
+        if (row) {
+            return {
+                ...row,
+                variants: JSON.parse(row.variants),
+                user_modified_variants: row.user_modified_variants ? JSON.parse(row.user_modified_variants) : null
+            };
+        }
+        return null;
+    },
+
+    create: (commentId, variants, defaultCode = '000001', defaultDate = 20220819) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO comment_explorations (comment_id, variants, default_code, default_date)
+            VALUES (?, ?, ?, ?)
+        `);
+        return stmt.run(commentId, JSON.stringify(variants), defaultCode, defaultDate);
+    },
+
+    update: (commentId, { variants, userModifiedVariants }) => {
+        const db = getDb();
+        const updates = [];
+        const params = [];
+
+        if (variants !== undefined) {
+            updates.push('variants = ?');
+            params.push(JSON.stringify(variants));
+        }
+        if (userModifiedVariants !== undefined) {
+            updates.push('user_modified_variants = ?');
+            params.push(JSON.stringify(userModifiedVariants));
+        }
+
+        if (updates.length === 0) return null;
+
+        params.push(commentId);
+        const stmt = db.prepare(`
+            UPDATE comment_explorations
+            SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+            WHERE comment_id = ?
+        `);
+        return stmt.run(...params);
+    },
+
+    delete: (commentId) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM comment_explorations WHERE comment_id = ?');
+        return stmt.run(commentId);
     }
 };

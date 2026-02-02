@@ -10,6 +10,7 @@ import InteractiveContent from '@/components/InteractiveContent';
 import InteractiveMarkdownRenderer from '@/components/InteractiveMarkdownRenderer';
 import FavoriteTodoIndicator from '@/components/FavoriteTodoIndicator';
 import AIChatButton from '@/components/AIChatButton';
+import ExploreButton from '@/components/ExploreButton';
 
 const MAX_OPEN_FRAMES = 4;
 
@@ -641,6 +642,7 @@ export default function PostDetailPage({ params }) {
                         </button>
                     </>
                 )}
+                <ExploreButton commentId={comment.id} commentContent={comment.content} user={user} />
             </div>
             {comment.replies?.map(reply => renderComment(reply, depth + 1))}
         </div>
