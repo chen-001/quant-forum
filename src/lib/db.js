@@ -219,12 +219,37 @@ function ensureCommentExplorationsSchema(database) {
                 user_modified_variants TEXT,
                 default_code TEXT DEFAULT '000001',
                 default_date INTEGER DEFAULT 20220819,
+                execution_results TEXT,
+                last_executed_variant INTEGER,
+                last_stock_code TEXT,
+                last_date INTEGER,
+                last_executed_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
             )
         `).run();
         database.prepare('CREATE INDEX IF NOT EXISTS idx_comment_explorations_comment_id ON comment_explorations(comment_id)').run();
+
+        // 添加新字段（如果表已存在）
+        const columns = database.prepare('PRAGMA table_info(comment_explorations)').all();
+        const columnNames = columns.map(c => c.name);
+
+        if (!columnNames.includes('execution_results')) {
+            database.prepare('ALTER TABLE comment_explorations ADD COLUMN execution_results TEXT').run();
+        }
+        if (!columnNames.includes('last_executed_variant')) {
+            database.prepare('ALTER TABLE comment_explorations ADD COLUMN last_executed_variant INTEGER').run();
+        }
+        if (!columnNames.includes('last_stock_code')) {
+            database.prepare('ALTER TABLE comment_explorations ADD COLUMN last_stock_code TEXT').run();
+        }
+        if (!columnNames.includes('last_date')) {
+            database.prepare('ALTER TABLE comment_explorations ADD COLUMN last_date INTEGER').run();
+        }
+        if (!columnNames.includes('last_executed_at')) {
+            database.prepare('ALTER TABLE comment_explorations ADD COLUMN last_executed_at DATETIME').run();
+        }
     } catch (error) {
         console.error('ensureCommentExplorationsSchema failed:', error);
     }
@@ -1645,7 +1670,8 @@ export const commentExplorationQueries = {
             return {
                 ...row,
                 variants: JSON.parse(row.variants),
-                user_modified_variants: row.user_modified_variants ? JSON.parse(row.user_modified_variants) : null
+                user_modified_variants: row.user_modified_variants ? JSON.parse(row.user_modified_variants) : null,
+                execution_results: row.execution_results ? JSON.parse(row.execution_results) : {}
             };
         }
         return null;
@@ -1654,13 +1680,13 @@ export const commentExplorationQueries = {
     create: (commentId, variants, defaultCode = '000001', defaultDate = 20220819) => {
         const db = getDb();
         const stmt = db.prepare(`
-            INSERT INTO comment_explorations (comment_id, variants, default_code, default_date)
+            INSERT OR REPLACE INTO comment_explorations (comment_id, variants, default_code, default_date)
             VALUES (?, ?, ?, ?)
         `);
         return stmt.run(commentId, JSON.stringify(variants), defaultCode, defaultDate);
     },
 
-    update: (commentId, { variants, userModifiedVariants }) => {
+    update: (commentId, { variants, userModifiedVariants, executionResults, lastExecutedVariant, lastStockCode, lastDate }) => {
         const db = getDb();
         const updates = [];
         const params = [];
@@ -1673,13 +1699,30 @@ export const commentExplorationQueries = {
             updates.push('user_modified_variants = ?');
             params.push(JSON.stringify(userModifiedVariants));
         }
+        if (executionResults !== undefined) {
+            updates.push('execution_results = ?');
+            params.push(JSON.stringify(executionResults));
+        }
+        if (lastExecutedVariant !== undefined) {
+            updates.push('last_executed_variant = ?');
+            params.push(lastExecutedVariant);
+        }
+        if (lastStockCode !== undefined) {
+            updates.push('last_stock_code = ?');
+            params.push(lastStockCode);
+        }
+        if (lastDate !== undefined) {
+            updates.push('last_date = ?');
+            params.push(lastDate);
+        }
 
         if (updates.length === 0) return null;
 
+        updates.push('updated_at = CURRENT_TIMESTAMP');
         params.push(commentId);
         const stmt = db.prepare(`
             UPDATE comment_explorations
-            SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+            SET ${updates.join(', ')}
             WHERE comment_id = ?
         `);
         return stmt.run(...params);

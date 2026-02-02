@@ -24,7 +24,8 @@ ${regenerateHint}
 2. **函数定义必须是 def calculate_factor(code, date):，绝对不要使用其他函数名如 calculate_xxx 等**
 3. **函数必须返回一个元组 tuple: (factor_dict, key_variables_dict)**
    - factor_dict: {因子名: 因子值}，因子值可以是标量(float/int)或时间序列(pd.Series)
-   - key_variables_dict: {变量名: 变量值}，用于展示中间计算过程，变量值可以是标量或时间序列
+   - key_variables_dict: {变量名: 变量值}，用于展示中间计算过程
+   - **重要：key_variables_dict中的变量值优先返回pd.Series类型（带时间索引），不得已的情况下才返回np.ndarray**
 4. 代码中需要包含关键中间变量的注释
 5. 代码要简洁高效，避免过于复杂的计算
 6. **必须实现具体的因子计算逻辑，不能只是占位符**
@@ -193,26 +194,35 @@ def read_market_pair(symbol:str, date:int)->tuple[pd.DataFrame,pd.DataFrame]:
 3. **时间格式**：所有时间字段均为datetime64[ns]格式，便于pandas时间序列分析
 4. **必须实现因子计算**：代码中必须包含具体的因子计算逻辑，返回实际的计算结果，不能只是TODO注释
 
-请返回JSON格式（不要包含markdown代码块标记）：
+请返回JSON格式（严格遵守以下要求）：
+1. 必须是合法的JSON格式，可以被JSON.parse直接解析
+2. **pseudocode字段必须使用普通双引号字符串，所有换行使用\n转义，绝对不能使用三引号"""**
+3. 不要包含markdown代码块标记
+
+返回格式示例：
 {
   "variants": [
     {
-      "name": "方案1名称（简洁描述核心思路）",
-      "description": "该方案的核心思路和特点",
-      "code": "Python代码字符串，包含完整的函数定义"
+      "name": "方案1名称",
+      "description": "方案描述...",
+      "pseudocode": "步骤1: 读取数据\n步骤2: 计算指标\n步骤3: 返回结果",
+      "code": "import pandas as pd\ndef calculate_factor(code, date):\n    ..."
     },
     {
       "name": "方案2名称",
-      "description": "该方案的核心思路和特点",
-      "code": "Python代码字符串"
+      "description": "方案描述...",
+      "pseudocode": "步骤1: ...\n步骤2: ...",
+      "code": "..."
     },
     {
       "name": "方案3名称",
-      "description": "该方案的核心思路和特点",
-      "code": "Python代码字符串"
+      "description": "方案描述...",
+      "pseudocode": "步骤1: ...\n步骤2: ...",
+      "code": "..."
     }
   ]
-}`;
+}
+`
 }
 
 /**
@@ -224,6 +234,7 @@ export function getDefaultVariants() {
         {
             name: "基础实现方案",
             description: "基于描述的直接实现，使用最直观的方法",
+            pseudocode: `步骤1. 数据准备\n读取逐笔成交数据\n读取盘口快照数据\n\n步骤2. 因子计算\n计算成交量加权平均价 VWAP = sum(价格 * 成交量) / sum(成交量)\n\n步骤3. 返回结果\n返回 VWAP 作为因子值`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
@@ -242,6 +253,7 @@ def calculate_factor(code, date):
         {
             name: "时间序列方案",
             description: "将因子计算为时间序列，保留更多细节信息",
+            pseudocode: `步骤1. 数据准备\n读取逐笔成交数据\n\n步骤2. 时间聚合\n按分钟分组聚合成交量\n\n步骤3. 返回结果\n返回每分钟成交量时间序列`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
@@ -261,6 +273,7 @@ def calculate_factor(code, date):
         {
             name: "盘口特征方案",
             description: "基于盘口快照数据计算因子",
+            pseudocode: `步骤1. 数据准备\n读取盘口快照数据\n\n步骤2. 计算买卖量\n汇总买一量\n汇总卖一量\n\n步骤3. 计算不平衡度\n买卖不平衡度 = (买一量 - 卖一量) / (买一量 + 卖一量)\n返回不平衡度`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
@@ -279,4 +292,88 @@ def calculate_factor(code, date):
     return {'imbalance': imbalance}, {'bid_vol': market_data['bid_vol1'], 'ask_vol': market_data['ask_vol1']}`
         }
     ];
+}
+
+/**
+ * 获取根据说明生成代码的prompt
+ * @param {string} description - 方案说明
+ * @param {string} pseudocode - 伪代码
+ * @param {string} currentCode - 当前代码（可选，用于参考）
+ * @returns {string} prompt
+ */
+export function getGenerateCodeFromDescriptionPrompt(description, pseudocode, currentCode = '') {
+    const currentCodeHint = currentCode ? `
+当前代码（供参考，不需要完全遵循）：
+\`\`\`python
+${currentCode}
+\`\`\`
+` : '';
+
+    return `你是一位专业的量化研究员。请根据以下方案说明和伪代码，生成完整的、可执行的Python代码。
+
+方案说明：
+${description}
+
+计算流程伪代码：
+\`\`\`
+${pseudocode}
+\`\`\`
+${currentCodeHint}
+要求：
+1. **函数定义必须是 def calculate_factor(code, date):，绝对不要使用其他函数名**
+2. **函数必须返回一个元组 tuple: (factor_dict, key_variables_dict)**
+   - factor_dict: {因子名: 因子值}，因子值可以是标量(float/int)或时间序列(pd.Series)
+   - key_variables_dict: {变量名: 变量值}，用于展示中间计算过程
+   - **重要：key_variables_dict中的变量值优先返回pd.Series类型（带时间索引），不得已的情况下才返回np.ndarray**
+3. 代码必须完整可执行，包含所有必要的import语句
+4. 代码逻辑应该严格遵循伪代码描述的计算流程
+5. 添加必要的错误处理（如空数据检查）
+6. 代码要简洁高效，避免过于复杂的计算
+
+### 1. 读取逐笔成交数据
+\`\`\`python
+def read_trade(symbol:str, date:int, with_retreat:int=0)->pd.DataFrame:
+    file_name = "%s_%d_%s.csv" % (symbol, date, "transaction")
+    file_path = os.path.join("/ssd_data/stock", str(date), "transaction", file_name)
+    df= pd.read_csv(
+        file_path,
+        dtype={"symbol": str},
+        usecols=[
+            "exchtime",
+            "price",
+            "volume",
+            "turnover",
+            "flag",
+            "index",
+            "localtime",
+            "ask_order",
+            "bid_order",
+        ],
+        memory_map=True,
+        engine="c",
+        low_memory=False,
+    )
+    if not with_retreat:
+        df=df[df.flag!=32]
+    df.exchtime=pd.to_timedelta(df.exchtime/1e6,unit='s')+pd.Timestamp('1970-01-01 08:00:00')
+    return df
+\`\`\`
+
+### 2. 读取盘口快照数据
+\`\`\`python
+def read_market(symbol:str, date:int)->pd.DataFrame:
+    file_name = "%s_%d_%s.csv" % (symbol, date, "market_data")
+    file_path = os.path.join("/ssd_data/stock", str(date), "market_data", file_name)
+    df= pd.read_csv(
+        file_path,
+        dtype={"symbol": str},
+        memory_map=True,
+        engine="c",
+        low_memory=False,
+    )
+    df.exchtime=pd.to_timedelta(df.exchtime/1e6,unit='s')+pd.Timestamp('1970-01-01 08:00:00')
+    return df
+\`\`\`
+
+请只返回完整的Python代码字符串（不要包含markdown代码块标记）：`;
 }
