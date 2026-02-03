@@ -408,17 +408,23 @@ const versionItemStyle = {
     borderRadius: 'var(--radius-md)',
     marginBottom: '8px',
     backgroundColor: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'var(--border-color)',
     transition: 'all 0.2s'
 };
 
 const selectedItemStyle = {
+    borderWidth: '1px',
+    borderStyle: 'solid',
     borderColor: 'var(--primary)',
     backgroundColor: 'rgba(var(--primary-rgb), 0.1)'
 };
 
 const importantItemStyle = {
-    borderLeft: '3px solid #f59e0b'
+    borderWidth: '1px 1px 1px 3px',
+    borderStyle: 'solid',
+    borderColor: 'var(--border-color) var(--border-color) var(--border-color) #f59e0b'
 };
 
 const importantBadgeStyle = {
