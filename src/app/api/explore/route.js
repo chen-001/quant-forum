@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { commentExplorationQueries, getDb } from '@/lib/db';
+import { commentExplorationQueries, getDb, activityLogQueries } from '@/lib/db';
 import { callZenmuxAI } from '@/lib/ai-client';
 import { executePythonCode } from '@/lib/code-executor';
 import { getExplorationPrompt } from '@/lib/exploration-prompt';
@@ -85,6 +85,35 @@ export async function POST(request) {
 
         // 保存到数据库
         commentExplorationQueries.create(commentId, variants, '000001', 20220819);
+
+        // 记录动态 - 获取评论和帖子信息
+        try {
+            const commentInfoStmt = db.prepare(`
+                SELECT c.id as comment_id, c.author_id as comment_author_id, c.post_id, p.title as post_title
+                FROM comments c
+                JOIN posts p ON c.post_id = p.id
+                WHERE c.id = ?
+            `);
+            const commentInfo = commentInfoStmt.get(commentId);
+            
+            if (commentInfo) {
+                activityLogQueries.create({
+                    category: 'exploration',
+                    action: 'exploration_created',
+                    actorId: session.user.id,
+                    relatedUserId: commentInfo.comment_author_id,
+                    postId: commentInfo.post_id,
+                    commentId: commentInfo.comment_id,
+                    meta: JSON.stringify({
+                        postTitle: commentInfo.post_title,
+                        variantCount: variants.length,
+                        variantNames: variants.map(v => v.name)
+                    })
+                });
+            }
+        } catch (logError) {
+            console.error('记录探索动态失败:', logError);
+        }
 
         return NextResponse.json({
             variants,

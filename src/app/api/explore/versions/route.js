@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { codeVersionQueries } from '@/lib/db';
+import { codeVersionQueries, getDb, activityLogQueries } from '@/lib/db';
 
 // 将 UTC 时间字符串转换为东八区时间字符串
 function toShanghaiTime(utcDateString) {
@@ -92,6 +92,39 @@ export async function POST(request) {
         }
 
         const newVersion = codeVersionQueries.getById(result.lastInsertRowid);
+
+        // 记录动态 - 获取评论和帖子信息
+        try {
+            const db = getDb();
+            const commentInfoStmt = db.prepare(`
+                SELECT c.id as comment_id, c.author_id as comment_author_id, c.post_id, p.title as post_title
+                FROM comments c
+                JOIN posts p ON c.post_id = p.id
+                WHERE c.id = ?
+            `);
+            const commentInfo = commentInfoStmt.get(commentId);
+            
+            if (commentInfo) {
+                activityLogQueries.create({
+                    category: 'exploration',
+                    action: 'exploration_version_saved',
+                    actorId: session.user.id,
+                    relatedUserId: commentInfo.comment_author_id,
+                    postId: commentInfo.post_id,
+                    commentId: commentInfo.comment_id,
+                    meta: JSON.stringify({
+                        postTitle: commentInfo.post_title,
+                        variantIndex: variantIndex,
+                        variantName: description?.slice(0, 50) || `方案${parseInt(variantIndex) + 1}`,
+                        versionId: result.lastInsertRowid,
+                        isImportant: isImportant || false,
+                        note: note?.slice(0, 100)
+                    })
+                });
+            }
+        } catch (logError) {
+            console.error('记录探索动态失败:', logError);
+        }
 
         // 转换时间为东八区
         const versionWithShanghaiTime = {

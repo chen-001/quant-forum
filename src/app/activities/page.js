@@ -27,7 +27,14 @@ const ACTION_CONFIG = {
     todo_note_updated: { icon: '📝', label: '更新了待办说明', color: '#8b5cf6', category: 'todo' },
     todo_transferred: { icon: '↔️', label: '流转了待办', color: '#6366f1', category: 'todo' },
     summary_field_updated: { icon: '✏️', label: '编辑了摘要字段', color: '#ec4899', category: 'summary' },
-    summary_batch_updated: { icon: '📑', label: '批量编辑了摘要', color: '#ec4899', category: 'summary' }
+    summary_batch_updated: { icon: '📑', label: '批量编辑了摘要', color: '#ec4899', category: 'summary' },
+    // 探索相关操作类型
+    exploration_created: { icon: '🔬', label: '生成了探索方案', color: '#8b5cf6', category: 'exploration' },
+    exploration_regenerated: { icon: '🔄', label: '重新生成了探索方案', color: '#6366f1', category: 'exploration' },
+    exploration_code_updated: { icon: '💻', label: '修改了探索代码', color: '#10b981', category: 'exploration' },
+    exploration_pseudocode_updated: { icon: '📝', label: '修改了伪代码', color: '#f59e0b', category: 'exploration' },
+    exploration_code_executed: { icon: '▶️', label: '执行了探索代码', color: '#3b82f6', category: 'exploration' },
+    exploration_version_saved: { icon: '💾', label: '保存了代码版本', color: '#ec4899', category: 'exploration' }
 };
 
 const formatDate = (dateStr) => {
@@ -174,6 +181,28 @@ const getActivityContent = (activity) => {
         return meta?.content || meta?.commentPreview || '';
     }
 
+    // 探索相关操作
+    if (action.includes('exploration')) {
+        if (action === 'exploration_created') {
+            return `生成了 ${meta?.variantCount || 3} 个探索方案: ${meta?.variantNames?.join(', ') || ''}`;
+        }
+        if (action === 'exploration_regenerated') {
+            return `重新生成了 ${meta?.variantCount || 3} 个探索方案: ${meta?.variantNames?.join(', ') || ''}`;
+        }
+        if (action === 'exploration_code_updated') {
+            return `修改了探索代码，涉及 ${meta?.variantCount || 0} 个方案`;
+        }
+        if (action === 'exploration_pseudocode_updated') {
+            return `修改了伪代码: ${meta?.variantName || ''} - ${meta?.description || ''}`;
+        }
+        if (action === 'exploration_code_executed') {
+            return `执行了探索代码: ${meta?.variantName || ''} (${meta?.stockCode || ''} ${meta?.date || ''}) ${meta?.success ? '✅' : '❌'}`;
+        }
+        if (action === 'exploration_version_saved') {
+            return `保存了代码版本: ${meta?.variantName || ''} ${meta?.isImportant ? '⭐' : ''} ${meta?.note || ''}`;
+        }
+    }
+
     return meta?.content || meta?.description || '';
 };
 
@@ -183,6 +212,10 @@ const getActivityHref = (activity) => {
     }
     if (activity.category === 'favorites_todos') {
         return activity.action?.startsWith('favorite') ? '/favorites' : '/todos';
+    }
+    // 探索相关操作，跳转到帖子详情页并定位到评论
+    if (activity.category === 'exploration' && activity.post_id) {
+        return `/post/${activity.post_id}#comment-${activity.comment_id}`;
     }
     if (activity.post_id) {
         let hash = '';
@@ -339,6 +372,7 @@ export default function ActivitiesPage() {
         { key: 'todo', label: '待办', icon: '📋' },
         { key: 'favorite', label: '收藏', icon: '⭐' },
         { key: 'summary', label: '摘要', icon: '📑' },
+        { key: 'exploration', label: '探索', icon: '🔬' },
     ];
 
     return (

@@ -4,7 +4,7 @@ import { getSessionFromCookies } from '@/lib/session';
 import { callZenmuxAI } from '@/lib/ai-client';
 import { executePythonCode } from '@/lib/code-executor';
 import { getGenerateCodeFromDescriptionPrompt } from '@/lib/exploration-prompt';
-import { commentExplorationQueries } from '@/lib/db';
+import { commentExplorationQueries, getDb, activityLogQueries } from '@/lib/db';
 
 // POST /api/explore/generate-code - 根据说明和伪代码生成代码
 export async function POST(request) {
@@ -97,6 +97,39 @@ ${validationResult.traceback || '无详细错误堆栈'}
                         commentExplorationQueries.update(parseInt(commentId), {
                             userModifiedVariants: variants
                         });
+
+                        // 记录动态 - 获取评论和帖子信息
+                        try {
+                            const db = getDb();
+                            const commentInfoStmt = db.prepare(`
+                                SELECT c.id as comment_id, c.author_id as comment_author_id, c.post_id, p.title as post_title
+                                FROM comments c
+                                JOIN posts p ON c.post_id = p.id
+                                WHERE c.id = ?
+                            `);
+                            const commentInfo = commentInfoStmt.get(commentId);
+                            
+                            if (commentInfo) {
+                                const variantName = variants[variantIndex]?.name || `方案${variantIndex + 1}`;
+                                
+                                activityLogQueries.create({
+                                    category: 'exploration',
+                                    action: 'exploration_pseudocode_updated',
+                                    actorId: session.user.id,
+                                    relatedUserId: commentInfo.comment_author_id,
+                                    postId: commentInfo.post_id,
+                                    commentId: commentInfo.comment_id,
+                                    meta: JSON.stringify({
+                                        postTitle: commentInfo.post_title,
+                                        variantIndex: variantIndex,
+                                        variantName: variantName,
+                                        description: description?.slice(0, 100)
+                                    })
+                                });
+                            }
+                        } catch (logError) {
+                            console.error('记录探索动态失败:', logError);
+                        }
                     }
                 }
             } catch (dbError) {
