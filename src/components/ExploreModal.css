@@ -1,0 +1,387 @@
+/* ==================== 探索页面专属鎏金配色 ==================== */
+/* 仅影响 ExploreModal 组件，不修改全局样式 */
+
+/* -------------------- 深色模式 - 奢华神秘 -------------------- */
+[data-theme="dark"] .explore-modal {
+  /* 背景色系 - 深邃墨黑 */
+  --explore-bg-primary: #0d0d12;
+  --explore-bg-secondary: #16161f;
+  --explore-bg-tertiary: #1a1a24;
+  --explore-bg-card: #14141c;
+  --explore-bg-hover: #252530;
+  --explore-bg-editor: #0f0f14;
+
+  /* 鎏金色系 - 经典金色 */
+  --explore-gold-primary: #d4af37;
+  --explore-gold-light: #f4d03f;
+  --explore-gold-dark: #b8860b;
+  --explore-gold-gradient: linear-gradient(135deg, #f4d03f 0%, #d4af37 50%, #b8860b 100%);
+  --explore-gold-glow: 0 0 20px rgba(212, 175, 55, 0.3);
+  --explore-gold-border: rgba(212, 175, 55, 0.4);
+
+  /* 红色点缀 - 高级暗红 */
+  --explore-red-primary: #9b2c3c;
+  --explore-red-light: #c0392b;
+  --explore-red-dark: #6b1e2a;
+  --explore-red-gradient: linear-gradient(135deg, #c0392b 0%, #9b2c3c 100%);
+  --explore-red-glow: 0 0 15px rgba(155, 44, 60, 0.4);
+
+  /* 文字色系 - 米色/金沙 */
+  --explore-text-primary: #f5f5dc;
+  --explore-text-secondary: #c9b896;
+  --explore-text-muted: #8a7f6b;
+  --explore-text-gold: #d4af37;
+
+  /* 边框色系 - 古铜 */
+  --explore-border: #3d3425;
+  --explore-border-light: #5c4f3a;
+  --explore-border-gold: rgba(212, 175, 55, 0.3);
+
+  /* 状态色 */
+  --explore-success: #27ae60;
+  --explore-error: #c0392b;
+  --explore-warning: #f39c12;
+}
+
+/* -------------------- 浅色模式 - 典雅高贵 -------------------- */
+[data-theme="light"] .explore-modal {
+  /* 背景色系 - 象牙白 */
+  --explore-bg-primary: #faf8f3;
+  --explore-bg-secondary: #f5f0e6;
+  --explore-bg-tertiary: #f0ebe3;
+  --explore-bg-card: #fdfbf7;
+  --explore-bg-hover: #e8e0d5;
+  --explore-bg-editor: #fffefb;
+
+  /* 古铜色系 - 典雅古铜 */
+  --explore-gold-primary: #8b7355;
+  --explore-gold-light: #a0826d;
+  --explore-gold-dark: #6b5344;
+  --explore-gold-gradient: linear-gradient(135deg, #a0826d 0%, #8b7355 50%, #6b5344 100%);
+  --explore-gold-glow: 0 0 15px rgba(139, 115, 85, 0.2);
+  --explore-gold-border: rgba(139, 115, 85, 0.4);
+
+  /* 酒红点缀 - 典雅酒红 */
+  --explore-red-primary: #9b2335;
+  --explore-red-light: #b83545;
+  --explore-red-dark: #7a1c2a;
+  --explore-red-gradient: linear-gradient(135deg, #b83545 0%, #9b2335 100%);
+  --explore-red-glow: 0 0 12px rgba(155, 35, 53, 0.3);
+
+  /* 文字色系 - 深棕/古铜 */
+  --explore-text-primary: #1a1a1a;
+  --explore-text-secondary: #5c4f3a;
+  --explore-text-muted: #8b7355;
+  --explore-text-gold: #6b5344;
+
+  /* 边框色系 - 浅金 */
+  --explore-border: #d4c5b0;
+  --explore-border-light: #e8dcc8;
+  --explore-border-gold: rgba(139, 115, 85, 0.3);
+
+  /* 状态色 */
+  --explore-success: #27ae60;
+  --explore-error: #c0392b;
+  --explore-warning: #e67e22;
+}
+
+/* ==================== 探索弹窗整体样式 ==================== */
+.explore-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+[data-theme="light"] .explore-modal-overlay {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+.explore-modal-content {
+  background-color: var(--explore-bg-card) !important;
+  border: 1px solid var(--explore-border) !important;
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px var(--explore-border-gold) !important;
+}
+
+[data-theme="light"] .explore-modal-content {
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.2),
+    0 0 0 1px var(--explore-border-gold) !important;
+}
+
+/* ==================== 头部样式 ==================== */
+.explore-modal-header {
+  background: var(--explore-bg-secondary) !important;
+  border-bottom: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-header h2 {
+  color: var(--explore-text-primary) !important;
+  background: var(--explore-gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==================== 方案Tab侧边栏 ==================== */
+.explore-modal-sidebar {
+  border-right: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-sidebar-title {
+  color: var(--explore-text-secondary) !important;
+}
+
+.explore-modal-tab {
+  background-color: var(--explore-bg-secondary) !important;
+  border: 1px solid var(--explore-border) !important;
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-tab:hover {
+  border-color: var(--explore-border-light) !important;
+  background-color: var(--explore-bg-hover) !important;
+}
+
+.explore-modal-tab-active {
+  border: 2px solid var(--explore-gold-primary) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.15) 0%,
+    rgba(184, 134, 11, 0.1) 100%
+  ) !important;
+  box-shadow: var(--explore-gold-glow) !important;
+}
+
+[data-theme="light"] .explore-modal-tab-active {
+  background: linear-gradient(
+    135deg,
+    rgba(139, 115, 85, 0.12) 0%,
+    rgba(107, 83, 68, 0.08) 100%
+  ) !important;
+}
+
+.explore-modal-tab-success {
+  border-left: 3px solid var(--explore-gold-primary) !important;
+}
+
+.explore-modal-tab-name {
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-tab-desc {
+  color: var(--explore-text-muted) !important;
+}
+
+/* ==================== 内容区域 ==================== */
+.explore-modal-area {
+  background-color: var(--explore-bg-secondary) !important;
+  border: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-area-header {
+  color: var(--explore-text-secondary) !important;
+}
+
+.explore-modal-area-header span {
+  color: var(--explore-text-muted) !important;
+}
+
+/* ==================== 编辑器样式 ==================== */
+.explore-modal-editor,
+.explore-modal-textarea {
+  background-color: var(--explore-bg-editor) !important;
+  border: 1px solid var(--explore-border) !important;
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-editor:focus,
+.explore-modal-textarea:focus {
+  border-color: var(--explore-gold-primary) !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15) !important;
+}
+
+[data-theme="light"] .explore-modal-editor:focus,
+[data-theme="light"] .explore-modal-textarea:focus {
+  box-shadow: 0 0 0 2px rgba(139, 115, 85, 0.15) !important;
+}
+
+/* ==================== 按钮样式 ==================== */
+.explore-modal-btn-primary {
+  background: var(--explore-gold-gradient) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3) !important;
+}
+
+.explore-modal-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .explore-modal-btn-primary {
+  box-shadow: 0 2px 8px rgba(139, 115, 85, 0.25) !important;
+}
+
+[data-theme="light"] .explore-modal-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(139, 115, 85, 0.35) !important;
+}
+
+.explore-modal-btn-secondary {
+  background-color: var(--explore-bg-tertiary) !important;
+  color: var(--explore-text-primary) !important;
+  border: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-btn-secondary:hover {
+  background-color: var(--explore-bg-hover) !important;
+  border-color: var(--explore-border-light) !important;
+}
+
+.explore-modal-btn-ghost {
+  background-color: transparent !important;
+  color: var(--explore-text-secondary) !important;
+  border: 1px solid transparent !important;
+}
+
+.explore-modal-btn-ghost:hover {
+  background-color: rgba(212, 175, 55, 0.1) !important;
+  color: var(--explore-gold-primary) !important;
+}
+
+[data-theme="light"] .explore-modal-btn-ghost:hover {
+  background-color: rgba(139, 115, 85, 0.1) !important;
+  color: var(--explore-gold-primary) !important;
+}
+
+/* 运行按钮 - 红色点缀 */
+.explore-modal-btn-run {
+  background: var(--explore-red-gradient) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: var(--explore-red-glow) !important;
+}
+
+.explore-modal-btn-run:hover {
+  box-shadow: 0 4px 15px rgba(155, 44, 60, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .explore-modal-btn-run:hover {
+  box-shadow: 0 4px 15px rgba(155, 35, 53, 0.4) !important;
+}
+
+/* ==================== 输入框样式 ==================== */
+.explore-modal-input {
+  background-color: var(--explore-bg-editor) !important;
+  border: 1px solid var(--explore-border) !important;
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-input:focus {
+  border-color: var(--explore-gold-primary) !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15) !important;
+}
+
+[data-theme="light"] .explore-modal-input:focus {
+  box-shadow: 0 0 0 2px rgba(139, 115, 85, 0.15) !important;
+}
+
+.explore-modal-input-label {
+  color: var(--explore-text-secondary) !important;
+}
+
+/* ==================== 错误提示 ==================== */
+.explore-modal-error {
+  background: linear-gradient(
+    90deg,
+    rgba(155, 44, 60, 0.15) 0%,
+    rgba(155, 44, 60, 0.05) 100%
+  ) !important;
+  color: var(--explore-red-light) !important;
+  border-bottom: 1px solid var(--explore-border) !important;
+}
+
+/* ==================== 因子结果卡片 ==================== */
+.explore-modal-factor-card {
+  background-color: var(--explore-bg-editor) !important;
+  border: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-factor-name {
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-factor-value {
+  color: var(--explore-gold-primary) !important;
+}
+
+.explore-modal-factor-label {
+  color: var(--explore-text-muted) !important;
+}
+
+/* ==================== 中间指标区域 ==================== */
+.explore-modal-variable-item {
+  background-color: var(--explore-bg-editor) !important;
+  border: 1px solid var(--explore-border) !important;
+}
+
+.explore-modal-variable-name {
+  color: var(--explore-text-primary) !important;
+}
+
+.explore-modal-stats-label {
+  color: var(--explore-text-muted) !important;
+}
+
+.explore-modal-stats-value {
+  color: var(--explore-gold-primary) !important;
+}
+
+/* ==================== 加载状态 ==================== */
+.explore-modal-loading {
+  color: var(--explore-text-secondary) !important;
+}
+
+.explore-modal-loading-spinner {
+  border-color: var(--explore-border) !important;
+  border-top-color: var(--explore-gold-primary) !important;
+}
+
+/* ==================== 空状态 ==================== */
+.explore-modal-empty {
+  color: var(--explore-text-muted) !important;
+}
+
+/* ==================== 图表样式覆盖 ==================== */
+.explore-modal .js-plotly-plot .plotly .main-svg {
+  background: transparent !important;
+}
+
+/* ==================== 滚动条样式 ==================== */
+.explore-modal ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.explore-modal ::-webkit-scrollbar-track {
+  background: var(--explore-bg-secondary);
+  border-radius: 4px;
+}
+
+.explore-modal ::-webkit-scrollbar-thumb {
+  background: var(--explore-border);
+  border-radius: 4px;
+  border: 2px solid var(--explore-bg-secondary);
+}
+
+.explore-modal ::-webkit-scrollbar-thumb:hover {
+  background: var(--explore-gold-primary);
+}
+
+/* ==================== 禁用状态 ==================== */
+.explore-modal-btn-primary:disabled,
+.explore-modal-btn-run:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}

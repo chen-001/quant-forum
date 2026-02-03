@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { diffLines } from 'diff';
 import CodeTimeline from './CodeTimeline';
+import './ExploreModal.css';
 
 // 动态导入Plotly以避免SSR问题
 const Plot = dynamic(() => import('react-plotly.js').then(mod => mod.default), {
@@ -59,6 +60,20 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     const originalPseudocodeRef = useRef('');
     // Timeline 弹窗状态
     const [showTimeline, setShowTimeline] = useState(false);
+    // 当前主题
+    const [theme, setTheme] = useState('dark');
+
+    // 监听主题变化
+    useEffect(() => {
+        const updateTheme = () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            setTheme(currentTheme);
+        };
+        updateTheme();
+        const observer = new MutationObserver(updateTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        return () => observer.disconnect();
+    }, []);
 
     // 加载探索方案
     useEffect(() => {
@@ -435,7 +450,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     // 渲染因子结果（支持多因子）- 2行紧凑表格
     const renderFactors = (factors) => {
         if (!factors || Object.keys(factors).length === 0) {
-            return <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>无因子数据</div>;
+            return <div className="explore-modal-empty" style={{ fontSize: '12px' }}>无因子数据</div>;
         }
 
         const factorNames = Object.keys(factors);
@@ -451,18 +466,16 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                 {factorNames.map((factorName) => {
                     const factorData = factors[factorName];
                     return (
-                        <div key={factorName} style={{ 
+                        <div key={factorName} className="explore-modal-factor-card" style={{ 
                             padding: '8px', 
-                            backgroundColor: 'var(--bg-primary)', 
                             borderRadius: 'var(--radius-md)', 
-                            border: '1px solid var(--border-color)',
                             fontSize: '11px'
                         }}>
-                            <div style={{ fontWeight: '600', fontSize: '12px', marginBottom: '4px', color: 'var(--text-primary)' }}>
+                            <div className="explore-modal-factor-name" style={{ fontWeight: '600', fontSize: '12px', marginBottom: '4px' }}>
                                 {factorName}
                             </div>
                             {factorData.type === 'Scalar' && (
-                                <div style={{ fontSize: '16px', fontWeight: '600', color: 'var(--primary)' }}>
+                                <div className="explore-modal-factor-value" style={{ fontSize: '16px', fontWeight: '600' }}>
                                     {factorData.value?.toFixed(6) || 'N/A'}
                                 </div>
                             )}
@@ -470,28 +483,28 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                 <div style={{ fontSize: '10px' }}>
                                     {Object.entries(factorData.value || {}).slice(0, 4).map(([k, v]) => (
                                         <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ color: 'var(--text-secondary)' }}>{k}:</span>
-                                            <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                            <span className="explore-modal-factor-label">{k}:</span>
+                                            <span className="explore-modal-factor-value" style={{ fontFamily: 'monospace' }}>
                                                 {typeof v === 'number' ? v.toFixed(4) : String(v)}
                                             </span>
                                         </div>
                                     ))}
                                     {Object.keys(factorData.value || {}).length > 4 && (
-                                        <div style={{ color: 'var(--text-muted)' }}>...</div>
+                                        <div className="explore-modal-empty">...</div>
                                     )}
                                 </div>
                             )}
                             {factorData.type === 'Series' && factorData.stats && (
                                 <div style={{ fontSize: '10px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>均值:</span>
-                                        <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                        <span className="explore-modal-factor-label">均值:</span>
+                                        <span className="explore-modal-factor-value" style={{ fontFamily: 'monospace' }}>
                                             {factorData.stats.mean?.toFixed(4)}
                                         </span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>标准差:</span>
-                                        <span style={{ color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                        <span className="explore-modal-factor-label">标准差:</span>
+                                        <span className="explore-modal-factor-value" style={{ fontFamily: 'monospace' }}>
                                             {factorData.stats.std?.toFixed(4)}
                                         </span>
                                     </div>
@@ -507,14 +520,14 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     // 渲染关键中间变量
     const renderKeyVariables = (keyVariables) => {
         if (!keyVariables || Object.keys(keyVariables).length === 0) {
-            return <div style={{ color: 'var(--text-muted)', padding: '20px' }}>无中间指标数据</div>;
+            return <div className="explore-modal-empty" style={{ padding: '20px' }}>无中间指标数据</div>;
         }
 
         return (
             <div style={{ overflow: 'auto', height: '100%' }}>
                 {Object.entries(keyVariables).map(([varName, varData]) => (
-                    <div key={varName} style={keyVariableItemStyle}>
-                        <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                    <div key={varName} className="explore-modal-variable-item" style={keyVariableItemStyle}>
+                        <div className="explore-modal-variable-name" style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px' }}>
                             {varName}
                         </div>
                         {varData.type === 'Series' && varData.data && (
@@ -548,17 +561,17 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                             y: varData.data.y,
                                             type: 'scatter',
                                             mode: 'lines',
-                                            line: { color: 'var(--primary)', width: 1 },
+                                            line: { color: '#d4af37', width: 1 },
                                             name: varName
                                         }]}
                                         layout={{
                                             autosize: true,
                                             paper_bgcolor: 'transparent',
                                             plot_bgcolor: 'transparent',
-                                            font: { color: 'var(--text-primary)', size: 9 },
+                                            font: { size: 9 },
                                             margin: { l: 30, r: 10, t: 10, b: 20 },
-                                            xaxis: { showgrid: false, zeroline: false, tickfont: { size: 8 } },
-                                            yaxis: { showgrid: true, gridcolor: 'var(--border-color)', zeroline: false, tickfont: { size: 8 } },
+                                            xaxis: { showgrid: false, zeroline: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
+                                            yaxis: { showgrid: true, gridcolor: getChartColors().gridColor, zeroline: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
                                             showlegend: false
                                         }}
                                         style={{ width: '100%', height: '100%' }}
@@ -573,7 +586,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                             x: varData.data.y,
                                             type: 'histogram',
                                             nbinsx: 30,
-                                            marker: { color: 'var(--primary)', opacity: 0.7 },
+                                            marker: { color: '#d4af37', opacity: 0.7 },
                                             name: varName
                                         }]}
                                         layout={{
@@ -582,8 +595,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                             plot_bgcolor: 'transparent',
                                             font: { color: 'var(--text-primary)', size: 9 },
                                             margin: { l: 30, r: 10, t: 10, b: 20 },
-                                            xaxis: { title: { text: '值', font: { size: 9 } }, showgrid: false, tickfont: { size: 8 } },
-                                            yaxis: { title: { text: '频次', font: { size: 9 } }, showgrid: true, gridcolor: 'var(--border-color)', tickfont: { size: 8 } },
+                                            xaxis: { title: { text: '值', font: { size: 9, color: getChartColors().titleColor } }, showgrid: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
+                                            yaxis: { title: { text: '频次', font: { size: 9, color: getChartColors().titleColor } }, showgrid: true, gridcolor: getChartColors().gridColor, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
                                             showlegend: false,
                                             bargap: 0.05
                                         }}
@@ -634,8 +647,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                             plot_bgcolor: 'transparent',
                                             font: { color: 'var(--text-primary)', size: 9 },
                                             margin: { l: 30, r: 10, t: 10, b: 20 },
-                                            xaxis: { showgrid: false, zeroline: false, tickfont: { size: 8 } },
-                                            yaxis: { showgrid: true, gridcolor: 'var(--border-color)', zeroline: false, tickfont: { size: 8 } },
+                                            xaxis: { showgrid: false, zeroline: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
+                                            yaxis: { showgrid: true, gridcolor: getChartColors().gridColor, zeroline: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
                                             showlegend: false
                                         }}
                                         style={{ width: '100%', height: '100%' }}
@@ -659,8 +672,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                             plot_bgcolor: 'transparent',
                                             font: { color: 'var(--text-primary)', size: 9 },
                                             margin: { l: 30, r: 10, t: 10, b: 20 },
-                                            xaxis: { title: { text: '值', font: { size: 9 } }, showgrid: false, tickfont: { size: 8 } },
-                                            yaxis: { title: { text: '频次', font: { size: 9 } }, showgrid: true, gridcolor: 'var(--border-color)', tickfont: { size: 8 } },
+                                            xaxis: { title: { text: '值', font: { size: 9, color: getChartColors().titleColor } }, showgrid: false, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
+                                            yaxis: { title: { text: '频次', font: { size: 9, color: getChartColors().titleColor } }, showgrid: true, gridcolor: getChartColors().gridColor, tickfont: { size: 8, color: getChartColors().textColor }, tickcolor: getChartColors().textColor },
                                             showlegend: false,
                                             bargap: 0.05
                                         }}
@@ -672,7 +685,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                             </>
                         )}
                         {varData.type === 'Scalar' && (
-                            <div style={{ fontSize: '18px', color: 'var(--primary)', fontWeight: '600' }}>
+                            <div className="explore-modal-stats-value" style={{ fontSize: '18px', fontWeight: '600' }}>
                                 {varData.value?.toFixed(6) || 'N/A'}
                             </div>
                         )}
@@ -685,12 +698,22 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     // 获取当前方案的执行结果
     const currentExecutionResult = executionResults[activeTab];
 
+    // 根据主题获取图表颜色配置
+    const getChartColors = () => {
+        const isDark = theme === 'dark';
+        return {
+            textColor: isDark ? '#c9b896' : '#5c4f3a',
+            gridColor: isDark ? '#3d3425' : '#d4c5b0',
+            titleColor: isDark ? '#c9b896' : '#5c4f3a'
+        };
+    };
+
     if (loading) {
         return (
-            <div style={modalOverlayStyle}>
-                <div style={modalContentStyle}>
-                    <div style={{ padding: '40px', textAlign: 'center' }}>
-                        <div className="spinner"></div>
+            <div className="explore-modal-overlay" style={modalOverlayStyle}>
+                <div className="explore-modal-content explore-modal" style={modalContentStyle}>
+                    <div className="explore-modal-loading" style={{ padding: '40px', textAlign: 'center' }}>
+                        <div className="spinner explore-modal-loading-spinner"></div>
                         <p style={{ marginTop: '16px' }}>正在加载探索方案...</p>
                     </div>
                 </div>
@@ -699,21 +722,21 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     }
 
     return (
-        <div style={modalOverlayStyle} onClick={onClose}>
-            <div style={modalContentStyle} onClick={e => e.stopPropagation()}>
+        <div className="explore-modal-overlay" style={modalOverlayStyle} onClick={onClose}>
+            <div className="explore-modal-content explore-modal" style={modalContentStyle} onClick={e => e.stopPropagation()}>
                 {/* 头部 */}
-                <div style={headerStyle}>
+                <div className="explore-modal-header" style={headerStyle}>
                     <h2 style={{ margin: 0, fontSize: '20px' }}>🔬 因子探索</h2>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button
-                            className="btn btn-secondary btn-sm"
+                            className="btn btn-sm explore-modal-btn-secondary"
                             onClick={regenerateExploration}
                             disabled={generating}
                         >
                             {generating ? '生成中...' : '🔄 重新生成'}
                         </button>
                         <button
-                            className="btn btn-ghost btn-sm"
+                            className="btn btn-sm explore-modal-btn-ghost"
                             onClick={onClose}
                         >
                             ✕ 关闭
@@ -723,7 +746,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
 
                 {/* 错误提示 */}
                 {error && (
-                    <div style={errorStyle}>
+                    <div className="explore-modal-error" style={errorStyle}>
                         <strong>错误:</strong> {error}
                     </div>
                 )}
@@ -731,26 +754,26 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                 {/* 主体内容 - 4区域网格布局 */}
                 <div style={gridContainerStyle}>
                     {/* 左侧边栏 - 方案Tab */}
-                    <div style={sidebarStyle}>
-                        <div style={{ fontWeight: '600', marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    <div className="explore-modal-sidebar" style={sidebarStyle}>
+                        <div className="explore-modal-sidebar-title" style={{ fontWeight: '600', marginBottom: '12px', fontSize: '13px' }}>
                             构造方案
                         </div>
                         {Array.isArray(variants) && variants.map((variant, index) => (
                             <button
                                 key={index}
+                                className={`explore-modal-tab ${activeTab === index ? 'explore-modal-tab-active' : ''} ${executionResults[index]?.success ? 'explore-modal-tab-success' : ''}`}
                                 style={{
                                     ...tabButtonStyle,
                                     ...(activeTab === index ? activeTabStyle : {}),
                                     ...(executionResults[index]?.success ? {
                                         borderLeftWidth: '3px',
-                                        borderLeftStyle: 'solid',
-                                        borderLeftColor: 'var(--success)'
+                                        borderLeftStyle: 'solid'
                                     } : {})
                                 }}
                                 onClick={() => handleTabChange(index)}
                             >
-                                <div style={{ fontWeight: '600', fontSize: '13px' }}>{variant.name}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: '1.4' }}>
+                                <div className="explore-modal-tab-name" style={{ fontWeight: '600', fontSize: '13px' }}>{variant.name}</div>
+                                <div className="explore-modal-tab-desc" style={{ fontSize: '11px', marginTop: '4px', lineHeight: '1.4' }}>
                                     {variant.description?.slice(0, 40)}...
                                 </div>
                             </button>
@@ -758,14 +781,15 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     </div>
 
                     {/* 左上：说明区 */}
-                    <div style={descriptionAreaStyle}>
-                        <div style={areaHeaderStyle}>
+                    <div className="explore-modal-area" style={descriptionAreaStyle}>
+                        <div className="explore-modal-area-header" style={areaHeaderStyle}>
                             方案说明
-                            <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px', color: 'var(--text-muted)' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px' }}>
                                 (可编辑)
                             </span>
                         </div>
                         <textarea
+                            className="explore-modal-textarea"
                             style={descriptionEditorStyle}
                             value={editedDescription}
                             onChange={(e) => setEditedDescription(e.target.value)}
@@ -775,11 +799,11 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     </div>
 
                     {/* 中上：因子结果区 */}
-                    <div style={factorResultAreaStyle}>
-                        <div style={areaHeaderStyle}>
+                    <div className="explore-modal-area" style={factorResultAreaStyle}>
+                        <div className="explore-modal-area-header" style={areaHeaderStyle}>
                             因子结果
                             {currentExecutionResult?.factors && (
-                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px', color: 'var(--text-muted)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px' }}>
                                     ({Object.keys(currentExecutionResult.factors).length}个)
                                 </span>
                             )}
@@ -788,11 +812,11 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                             {currentExecutionResult?.success ? (
                                 renderFactors(currentExecutionResult.factors)
                             ) : currentExecutionResult?.error ? (
-                                <div style={{ color: 'var(--error)', fontSize: '12px' }}>
+                                <div style={{ color: 'var(--explore-error)', fontSize: '12px' }}>
                                     执行失败: {currentExecutionResult.error}
                                 </div>
                             ) : (
-                                <div style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center', paddingTop: '20px' }}>
+                                <div className="explore-modal-empty" style={{ fontSize: '12px', textAlign: 'center', paddingTop: '20px' }}>
                                     点击运行代码查看因子结果
                                 </div>
                             )}
@@ -800,16 +824,16 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     </div>
 
                     {/* 右上：伪代码区 */}
-                    <div style={pseudocodeAreaStyle}>
-                        <div style={{...areaHeaderStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div className="explore-modal-area" style={pseudocodeAreaStyle}>
+                        <div style={{...areaHeaderStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}} className="explore-modal-area-header">
                             <span>
                                 计算流程伪代码
-                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px', color: 'var(--text-muted)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px' }}>
                                     (可编辑)
                                 </span>
                             </span>
                             <button
-                                className="btn btn-primary btn-sm"
+                                className="btn btn-sm explore-modal-btn-primary"
                                 onClick={generateCodeFromDescription}
                                 disabled={generatingCode}
                             >
@@ -817,6 +841,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                             </button>
                         </div>
                         <textarea
+                            className="explore-modal-textarea"
                             style={pseudocodeEditorStyle}
                             value={editedPseudocode}
                             onChange={(e) => setEditedPseudocode(e.target.value)}
@@ -826,42 +851,44 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     </div>
 
                     {/* 左下：代码展示区（含参数设置） */}
-                    <div style={codeAreaStyle}>
-                        <div style={areaHeaderStyle}>
+                    <div className="explore-modal-area" style={codeAreaStyle}>
+                        <div className="explore-modal-area-header" style={areaHeaderStyle}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                                 <span>
                                     代码编辑
-                                    <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px', color: 'var(--text-muted)' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px' }}>
                                         (修改后自动保存)
                                     </span>
                                 </span>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                                        <label className="explore-modal-input-label" style={{ display: 'block', fontSize: '10px', marginBottom: '2px' }}>
                                             股票代码
                                         </label>
                                         <input
                                             type="text"
                                             value={stockCode}
                                             onChange={(e) => setStockCode(e.target.value)}
+                                            className="explore-modal-input"
                                             style={smallInputStyle}
                                             placeholder="000001"
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                                        <label className="explore-modal-input-label" style={{ display: 'block', fontSize: '10px', marginBottom: '2px' }}>
                                             日期
                                         </label>
                                         <input
                                             type="text"
                                             value={date}
                                             onChange={(e) => setDate(e.target.value)}
+                                            className="explore-modal-input"
                                             style={smallInputStyle}
                                             placeholder="20220819"
                                         />
                                     </div>
                                     <button
-                                        className="btn btn-primary btn-sm"
+                                        className="btn btn-sm explore-modal-btn-run"
                                         onClick={executeCode}
                                         disabled={executing}
                                         style={{ height: '28px', marginTop: '14px' }}
@@ -869,7 +896,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                         {executing ? '执行中...' : '▶ 运行'}
                                     </button>
                                     <button
-                                        className="btn btn-secondary btn-sm"
+                                        className="btn btn-sm explore-modal-btn-secondary"
                                         onClick={() => setShowTimeline(true)}
                                         style={{ height: '28px', marginTop: '14px' }}
                                     >
@@ -879,6 +906,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                             </div>
                         </div>
                         <textarea
+                            className="explore-modal-editor"
                             style={codeEditorStyle}
                             value={editedCode}
                             onChange={(e) => setEditedCode(e.target.value)}
@@ -887,27 +915,27 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     </div>
 
                     {/* 右下：中间指标可视化区 */}
-                    <div style={keyVariablesAreaStyle}>
-                        <div style={areaHeaderStyle}>
+                    <div className="explore-modal-area" style={keyVariablesAreaStyle}>
+                        <div className="explore-modal-area-header" style={areaHeaderStyle}>
                             关键中间指标
                             {currentExecutionResult?.keyVariables && (
-                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px', color: 'var(--text-muted)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '8px' }}>
                                     ({Object.keys(currentExecutionResult.keyVariables).length}个)
                                 </span>
                             )}
                         </div>
                         <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
                             {executing ? (
-                                <div style={{ padding: '40px', textAlign: 'center' }}>
-                                    <div className="spinner"></div>
-                                    <p style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                                <div className="explore-modal-loading" style={{ padding: '40px', textAlign: 'center' }}>
+                                    <div className="spinner explore-modal-loading-spinner"></div>
+                                    <p style={{ marginTop: '16px', fontSize: '12px' }}>
                                         正在执行代码...
                                     </p>
                                 </div>
                             ) : currentExecutionResult?.success ? (
                                 renderKeyVariables(currentExecutionResult.keyVariables)
                             ) : (
-                                <div style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center', paddingTop: '40px' }}>
+                                <div className="explore-modal-empty" style={{ fontSize: '12px', textAlign: 'center', paddingTop: '40px' }}>
                                     点击运行代码查看可视化结果
                                 </div>
                             )}
@@ -952,7 +980,6 @@ const modalOverlayStyle = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -961,14 +988,12 @@ const modalOverlayStyle = {
 };
 
 const modalContentStyle = {
-    backgroundColor: 'var(--bg-card)',
     borderRadius: 'var(--radius-lg)',
     width: '95vw',
     height: '95vh',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
-    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+    overflow: 'hidden'
 };
 
 const headerStyle = {
@@ -976,7 +1001,6 @@ const headerStyle = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 20px',
-    borderBottom: '1px solid var(--border-color)',
     flexShrink: 0
 };
 
@@ -984,8 +1008,8 @@ const headerStyle = {
 const gridContainerStyle = {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: '240px 1fr 1fr 2fr', // 左侧边栏 | 说明区(25%) | 因子结果(25%) | 伪代码(50%)
-    gridTemplateRows: '35% 65%', // 上35%，下65%
+    gridTemplateColumns: '240px 1fr 1fr 2fr',
+    gridTemplateRows: '35% 65%',
     gap: '12px',
     padding: '12px',
     overflow: 'hidden'
@@ -994,75 +1018,64 @@ const gridContainerStyle = {
 const sidebarStyle = {
     gridRow: '1 / 3',
     gridColumn: '1',
-    borderRight: '1px solid var(--border-color)',
     padding: '0 12px 0 0',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column'
 };
 
-// 左上：说明区（25%宽）
+// 左上：说明区
 const descriptionAreaStyle = {
     gridRow: '1',
     gridColumn: '2',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
     padding: '12px'
 };
 
-// 中上：因子结果区（25%宽）
+// 中上：因子结果区
 const factorResultAreaStyle = {
     gridRow: '1',
     gridColumn: '3',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
     padding: '12px'
 };
 
-// 右上：伪代码区（50%宽）
+// 右上：伪代码区
 const pseudocodeAreaStyle = {
     gridRow: '1',
     gridColumn: '4',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
     padding: '12px'
 };
 
-// 左下：代码展示区（50%宽，含参数设置）
+// 左下：代码展示区
 const codeAreaStyle = {
     gridRow: '2',
     gridColumn: '2 / 4',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
     padding: '12px'
 };
 
-// 右下：中间指标可视化区（50%宽）
+// 右下：中间指标可视化区
 const keyVariablesAreaStyle = {
     gridRow: '2',
     gridColumn: '4',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
     padding: '12px'
 };
 
@@ -1072,16 +1085,13 @@ const executionControlStyle = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '8px 12px',
-    backgroundColor: 'var(--bg-primary)',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--border-color)'
+    borderRadius: 'var(--radius-md)'
 };
 
 const areaHeaderStyle = {
     fontWeight: '600',
     fontSize: '13px',
     marginBottom: '8px',
-    color: 'var(--text-secondary)',
     flexShrink: 0
 };
 
@@ -1092,10 +1102,7 @@ const codeEditorStyle = {
     fontSize: '12px',
     lineHeight: '1.5',
     padding: '10px',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
     resize: 'none',
     outline: 'none',
     overflow: 'auto'
@@ -1108,10 +1115,7 @@ const descriptionEditorStyle = {
     fontSize: '12px',
     lineHeight: '1.5',
     padding: '10px',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
     resize: 'none',
     outline: 'none',
     overflow: 'auto'
@@ -1124,10 +1128,7 @@ const pseudocodeEditorStyle = {
     fontSize: '12px',
     lineHeight: '1.5',
     padding: '10px',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
     resize: 'none',
     outline: 'none',
     overflow: 'auto',
@@ -1138,10 +1139,7 @@ const pseudocodeEditorStyle = {
 
 const smallInputStyle = {
     padding: '4px 8px',
-    border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
     fontSize: '12px',
     width: '90px'
 };
@@ -1150,47 +1148,17 @@ const tabButtonStyle = {
     width: '100%',
     padding: '10px',
     marginBottom: '8px',
-    borderTopWidth: '1px',
-    borderTopStyle: 'solid',
-    borderTopColor: 'var(--border-color)',
-    borderRightWidth: '1px',
-    borderRightStyle: 'solid',
-    borderRightColor: 'var(--border-color)',
-    borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'var(--border-color)',
-    borderLeftWidth: '1px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: 'var(--border-color)',
     borderRadius: 'var(--radius-md)',
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
     cursor: 'pointer',
     textAlign: 'left',
     transition: 'all 0.2s'
 };
 
 const activeTabStyle = {
-    borderTopWidth: '2px',
-    borderTopStyle: 'solid',
-    borderTopColor: 'var(--primary)',
-    borderRightWidth: '2px',
-    borderRightStyle: 'solid',
-    borderRightColor: 'var(--primary)',
-    borderBottomWidth: '2px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'var(--primary)',
-    borderLeftWidth: '2px',
-    borderLeftStyle: 'solid',
-    borderLeftColor: 'var(--primary)',
-    backgroundColor: 'var(--primary-light)'
 };
 
 const errorStyle = {
     padding: '10px 20px',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    color: 'var(--error)',
-    borderBottom: '1px solid var(--border-color)',
     fontSize: '13px'
 };
 
@@ -1199,9 +1167,7 @@ const errorStyle = {
 const keyVariableItemStyle = {
     marginBottom: '12px',
     padding: '10px',
-    backgroundColor: 'var(--bg-primary)',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--border-color)'
+    borderRadius: 'var(--radius-md)'
 };
 
 const statsTableStyle = {
@@ -1213,7 +1179,6 @@ const statsTableStyle = {
 
 const statsLabelStyle = {
     padding: '3px 6px',
-    color: 'var(--text-muted)',
     fontWeight: '500',
     textAlign: 'left',
     width: '20%'
@@ -1221,7 +1186,6 @@ const statsLabelStyle = {
 
 const statsValueStyle = {
     padding: '3px 6px',
-    color: 'var(--text-primary)',
     fontFamily: 'monospace',
     width: '30%'
 };
