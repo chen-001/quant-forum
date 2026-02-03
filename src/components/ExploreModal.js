@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { diffLines } from 'diff';
+import CodeTimeline from './CodeTimeline';
 
 // 动态导入Plotly以避免SSR问题
 const Plot = dynamic(() => import('react-plotly.js').then(mod => mod.default), {
@@ -56,6 +57,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     const [editedPseudocode, setEditedPseudocode] = useState('');
     // 保存原始伪代码，用于生成diff
     const originalPseudocodeRef = useRef('');
+    // Timeline 弹窗状态
+    const [showTimeline, setShowTimeline] = useState(false);
 
     // 加载探索方案
     useEffect(() => {
@@ -273,6 +276,24 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
             } catch (saveErr) {
                 console.error('执行后保存代码失败:', saveErr);
             }
+
+            // 保存代码版本
+            try {
+                await fetch('/api/explore/versions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        commentId,
+                        variantIndex: activeTab,
+                        code: editedCode,
+                        pseudocode: editedPseudocode,
+                        description: editedDescription,
+                        note: `执行代码 (${stockCode}, ${date})`
+                    })
+                });
+            } catch (versionErr) {
+                console.error('保存代码版本失败:', versionErr);
+            }
         } catch (err) {
             setError('执行失败: ' + err.message);
         } finally {
@@ -383,6 +404,24 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ commentId, variants: newVariants })
                 });
+
+                // 保存代码版本
+                try {
+                    await fetch('/api/explore/versions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            commentId,
+                            variantIndex: activeTab,
+                            code: data.code,
+                            pseudocode: editedPseudocode,
+                            description: editedDescription,
+                            note: '基于伪代码生成'
+                        })
+                    });
+                } catch (versionErr) {
+                    console.error('保存代码版本失败:', versionErr);
+                }
             } else {
                 setError(data.error || '生成代码失败');
             }
@@ -829,6 +868,13 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                                     >
                                         {executing ? '执行中...' : '▶ 运行'}
                                     </button>
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setShowTimeline(true)}
+                                        style={{ height: '28px', marginTop: '14px' }}
+                                    >
+                                        📜 历史
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -868,6 +914,32 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Timeline 弹窗 */}
+                <CodeTimeline
+                    commentId={commentId}
+                    variantIndex={activeTab}
+                    currentCode={editedCode}
+                    currentPseudocode={editedPseudocode}
+                    currentDescription={editedDescription}
+                    isOpen={showTimeline}
+                    onClose={() => setShowTimeline(false)}
+                    onRestoreVersion={(version) => {
+                        setEditedCode(version.code);
+                        setEditedPseudocode(version.pseudocode);
+                        setEditedDescription(version.description);
+                        originalPseudocodeRef.current = version.pseudocode;
+                        // 更新 variants
+                        const newVariants = [...variants];
+                        newVariants[activeTab] = {
+                            ...newVariants[activeTab],
+                            code: version.code,
+                            pseudocode: version.pseudocode,
+                            description: version.description
+                        };
+                        setVariants(newVariants);
+                    }}
+                />
             </div>
         </div>
     );

@@ -22,6 +22,7 @@ export function getDb() {
         ensureActivityLogsSchema(db);
         ensureActivityViewsSchema(db);
         ensureCommentExplorationsSchema(db);
+        ensureCodeVersionsSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -252,6 +253,34 @@ function ensureCommentExplorationsSchema(database) {
         }
     } catch (error) {
         console.error('ensureCommentExplorationsSchema failed:', error);
+    }
+}
+
+// 代码版本历史表
+function ensureCodeVersionsSchema(database) {
+    try {
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS code_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id INTEGER NOT NULL,
+                variant_index INTEGER NOT NULL DEFAULT 0,
+                code TEXT NOT NULL,
+                pseudocode TEXT NOT NULL,
+                description TEXT,
+                note TEXT,
+                tags TEXT,
+                is_important INTEGER DEFAULT 0,
+                created_by INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_code_versions_comment_id ON code_versions(comment_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_code_versions_variant ON code_versions(comment_id, variant_index)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_code_versions_created_at ON code_versions(created_at)').run();
+    } catch (error) {
+        console.error('ensureCodeVersionsSchema failed:', error);
     }
 }
 
@@ -1732,5 +1761,158 @@ export const commentExplorationQueries = {
         const db = getDb();
         const stmt = db.prepare('DELETE FROM comment_explorations WHERE comment_id = ?');
         return stmt.run(commentId);
+    }
+};
+
+// 代码版本历史相关操作
+export const codeVersionQueries = {
+    // 创建新版本
+    create: ({ commentId, variantIndex, code, pseudocode, description, note = null, tags = null, isImportant = false, createdBy = null }) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO code_versions (comment_id, variant_index, code, pseudocode, description, note, tags, is_important, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(commentId, variantIndex, code, pseudocode, description, note, tags, isImportant ? 1 : 0, createdBy);
+    },
+
+    // 获取版本列表（按时间倒序）
+    listByCommentAndVariant: (commentId, variantIndex) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT cv.*, u.username as created_by_name
+            FROM code_versions cv
+            LEFT JOIN users u ON cv.created_by = u.id
+            WHERE cv.comment_id = ? AND cv.variant_index = ?
+            ORDER BY cv.created_at DESC
+        `);
+        return stmt.all(commentId, variantIndex);
+    },
+
+    // 获取单个版本
+    getById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT cv.*, u.username as created_by_name
+            FROM code_versions cv
+            LEFT JOIN users u ON cv.created_by = u.id
+            WHERE cv.id = ?
+        `);
+        return stmt.get(id);
+    },
+
+    // 获取两个版本用于对比
+    getTwoVersions: (versionId1, versionId2) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT cv.*, u.username as created_by_name
+            FROM code_versions cv
+            LEFT JOIN users u ON cv.created_by = u.id
+            WHERE cv.id IN (?, ?)
+            ORDER BY cv.created_at ASC
+        `);
+        return stmt.all(versionId1, versionId2);
+    },
+
+    // 更新版本备注和标签
+    updateNoteAndTags: (id, { note, tags, isImportant }) => {
+        const db = getDb();
+        const updates = [];
+        const params = [];
+
+        if (note !== undefined) {
+            updates.push('note = ?');
+            params.push(note);
+        }
+        if (tags !== undefined) {
+            updates.push('tags = ?');
+            params.push(tags);
+        }
+        if (isImportant !== undefined) {
+            updates.push('is_important = ?');
+            params.push(isImportant ? 1 : 0);
+        }
+
+        if (updates.length === 0) return null;
+
+        params.push(id);
+        const stmt = db.prepare(`
+            UPDATE code_versions
+            SET ${updates.join(', ')}
+            WHERE id = ?
+        `);
+        return stmt.run(...params);
+    },
+
+    // 标记为重要版本
+    markAsImportant: (id, isImportant = true) => {
+        const db = getDb();
+        const stmt = db.prepare('UPDATE code_versions SET is_important = ? WHERE id = ?');
+        return stmt.run(isImportant ? 1 : 0, id);
+    },
+
+    // 删除版本
+    delete: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM code_versions WHERE id = ?');
+        return stmt.run(id);
+    },
+
+    // 获取版本数量
+    count: (commentId, variantIndex) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT COUNT(*) as total FROM code_versions
+            WHERE comment_id = ? AND variant_index = ?
+        `);
+        return stmt.get(commentId, variantIndex)?.total || 0;
+    },
+
+    // 获取非重要版本数量（用于清理）
+    countNonImportant: (commentId, variantIndex) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT COUNT(*) as total FROM code_versions
+            WHERE comment_id = ? AND variant_index = ? AND is_important = 0
+        `);
+        return stmt.get(commentId, variantIndex)?.total || 0;
+    },
+
+    // 清理旧版本（保留最近20个非重要版本）
+    cleanupOldVersions: (commentId, variantIndex, keepCount = 20) => {
+        const db = getDb();
+        // 获取需要删除的版本ID（超出保留数量的非重要版本）
+        const stmt = db.prepare(`
+            SELECT id FROM code_versions
+            WHERE comment_id = ? AND variant_index = ? AND is_important = 0
+            ORDER BY created_at DESC
+            LIMIT -1 OFFSET ?
+        `);
+        const versionsToDelete = stmt.all(commentId, variantIndex, keepCount);
+        
+        if (versionsToDelete.length === 0) return 0;
+
+        const ids = versionsToDelete.map(v => v.id);
+        const placeholders = ids.map(() => '?').join(',');
+        const deleteStmt = db.prepare(`
+            DELETE FROM code_versions
+            WHERE id IN (${placeholders})
+        `);
+        const result = deleteStmt.run(...ids);
+        return result.changes;
+    },
+
+    // 获取最新版本
+    getLatest: (commentId, variantIndex) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT cv.*, u.username as created_by_name
+            FROM code_versions cv
+            LEFT JOIN users u ON cv.created_by = u.id
+            WHERE cv.comment_id = ? AND cv.variant_index = ?
+            ORDER BY cv.created_at DESC
+            LIMIT 1
+        `);
+        return stmt.get(commentId, variantIndex);
     }
 };
