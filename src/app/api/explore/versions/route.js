@@ -3,6 +3,21 @@ import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { codeVersionQueries } from '@/lib/db';
 
+// 将 UTC 时间字符串转换为东八区时间字符串
+function toShanghaiTime(utcDateString) {
+    if (!utcDateString) return '';
+    const date = new Date(utcDateString + 'Z'); // 添加 Z 表示 UTC 时间
+    return date.toLocaleString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
 // GET /api/explore/versions?commentId=xxx&variantIndex=0 - 获取版本列表
 export async function GET(request) {
     try {
@@ -24,7 +39,13 @@ export async function GET(request) {
             parseInt(variantIndex)
         );
 
-        return NextResponse.json({ versions });
+        // 转换时间为东八区
+        const versionsWithShanghaiTime = versions.map(v => ({
+            ...v,
+            created_at: toShanghaiTime(v.created_at)
+        }));
+
+        return NextResponse.json({ versions: versionsWithShanghaiTime });
     } catch (error) {
         console.error('获取版本列表失败:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -72,9 +93,15 @@ export async function POST(request) {
 
         const newVersion = codeVersionQueries.getById(result.lastInsertRowid);
 
+        // 转换时间为东八区
+        const versionWithShanghaiTime = {
+            ...newVersion,
+            created_at: toShanghaiTime(newVersion.created_at)
+        };
+
         return NextResponse.json({
             success: true,
-            version: newVersion,
+            version: versionWithShanghaiTime,
             deletedCount
         });
     } catch (error) {

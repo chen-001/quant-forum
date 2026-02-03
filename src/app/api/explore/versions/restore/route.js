@@ -3,6 +3,21 @@ import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
 import { codeVersionQueries, commentExplorationQueries } from '@/lib/db';
 
+// 将 UTC 时间字符串转换为东八区时间字符串
+function toShanghaiTime(utcDateString) {
+    if (!utcDateString) return '';
+    const date = new Date(utcDateString + 'Z'); // 添加 Z 表示 UTC 时间
+    return date.toLocaleString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
 // POST /api/explore/versions/restore - 恢复到指定版本
 export async function POST(request) {
     try {
@@ -57,9 +72,15 @@ export async function POST(request) {
             createdBy: session.user.id
         });
 
+        // 转换时间为东八区
+        const versionWithShanghaiTime = {
+            ...version,
+            created_at: toShanghaiTime(version.created_at)
+        };
+
         return NextResponse.json({
             success: true,
-            restoredVersion: version,
+            restoredVersion: versionWithShanghaiTime,
             newVersionId: restoreResult.lastInsertRowid
         });
     } catch (error) {

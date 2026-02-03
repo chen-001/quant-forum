@@ -4,6 +4,21 @@ import { getSessionFromCookies } from '@/lib/session';
 import { codeVersionQueries } from '@/lib/db';
 import { diffLines } from 'diff';
 
+// 将 UTC 时间字符串转换为东八区时间字符串
+function toShanghaiTime(utcDateString) {
+    if (!utcDateString) return '';
+    const date = new Date(utcDateString + 'Z'); // 添加 Z 表示 UTC 时间
+    return date.toLocaleString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
 // GET /api/explore/versions/diff?versionId1=xxx&versionId2=xxx - 获取两个版本的diff
 export async function GET(request) {
     try {
@@ -39,7 +54,7 @@ export async function GET(request) {
         return NextResponse.json({
             oldVersion: {
                 id: oldVersion.id,
-                createdAt: oldVersion.created_at,
+                createdAt: toShanghaiTime(oldVersion.created_at),
                 createdBy: oldVersion.created_by_name,
                 note: oldVersion.note,
                 tags: oldVersion.tags,
@@ -50,7 +65,7 @@ export async function GET(request) {
             },
             newVersion: {
                 id: newVersion.id,
-                createdAt: newVersion.created_at,
+                createdAt: toShanghaiTime(newVersion.created_at),
                 createdBy: newVersion.created_by_name,
                 note: newVersion.note,
                 tags: newVersion.tags,
