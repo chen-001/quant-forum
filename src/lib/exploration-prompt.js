@@ -299,9 +299,10 @@ def calculate_factor(code, date):
  * @param {string} description - 方案说明
  * @param {string} pseudocode - 伪代码
  * @param {string} currentCode - 当前代码（可选，用于参考）
+ * @param {string|null} pseudocodeDiff - 伪代码的diff（可选，用于精确定位修改）
  * @returns {string} prompt
  */
-export function getGenerateCodeFromDescriptionPrompt(description, pseudocode, currentCode = '') {
+export function getGenerateCodeFromDescriptionPrompt(description, pseudocode, currentCode = '', pseudocodeDiff = null) {
     const currentCodeHint = currentCode ? `
 当前代码（供参考，不需要完全遵循）：
 \`\`\`python
@@ -309,6 +310,96 @@ ${currentCode}
 \`\`\`
 ` : '';
 
+    // 如果有diff，使用diff-focused的提示词
+    if (pseudocodeDiff) {
+        return `你是一位专业的量化研究员。请根据以下伪代码的修改（diff），对当前代码进行对应的精准修改。
+
+## 修改说明
+用户修改了方案说明和伪代码，以下是具体的变更内容：
+
+**伪代码变更（diff格式，+表示新增，-表示删除）：**
+\`\`\`
+${pseudocodeDiff}
+\`\`\`
+
+**当前伪代码（修改后）：**
+\`\`\`
+${pseudocode}
+\`\`\`
+
+**方案说明：**
+${description}
+
+${currentCodeHint}
+## 修改要求
+1. **只修改与伪代码变更相关的代码部分**，未变更的部分保持原有实现不变
+2. **重点关注diff中的变更**：
+   - 对于新增(+)的行，在代码中添加对应的实现
+   - 对于删除(-)的行，在代码中移除对应的逻辑
+3. **函数定义必须是 def calculate_factor(code, date):，绝对不要使用其他函数名**
+4. **函数必须返回一个元组 tuple: (factor_dict, key_variables_dict)**
+   - factor_dict: {因子名: 因子值}，因子值可以是标量(float/int)或时间序列(pd.Series)
+   - key_variables_dict: {变量名: 变量值}，用于展示中间计算过程
+   - **重要：key_variables_dict中的变量值优先返回pd.Series类型（带时间索引），不得已的情况下才返回np.ndarray**
+5. 代码必须完整可执行，包含所有必要的import语句
+6. 添加必要的错误处理（如空数据检查）
+7. 代码要简洁高效，避免过于复杂的计算
+
+## 重要提示
+- 这是一个**增量修改**任务，不是重写
+- 保持原有代码的结构和风格
+- 只修改与伪代码变更相关的部分
+- 如果伪代码变更涉及新的计算逻辑，确保正确实现
+
+### 1. 读取逐笔成交数据
+\`\`\`python
+def read_trade(symbol:str, date:int, with_retreat:int=0)->pd.DataFrame:
+    file_name = "%s_%d_%s.csv" % (symbol, date, "transaction")
+    file_path = os.path.join("/ssd_data/stock", str(date), "transaction", file_name)
+    df= pd.read_csv(
+        file_path,
+        dtype={"symbol": str},
+        usecols=[
+            "exchtime",
+            "price",
+            "volume",
+            "turnover",
+            "flag",
+            "index",
+            "localtime",
+            "ask_order",
+            "bid_order",
+        ],
+        memory_map=True,
+        engine="c",
+        low_memory=False,
+    )
+    if not with_retreat:
+        df=df[df.flag!=32]
+    df.exchtime=pd.to_timedelta(df.exchtime/1e6,unit='s')+pd.Timestamp('1970-01-01 08:00:00')
+    return df
+\`\`\`
+
+### 2. 读取盘口快照数据
+\`\`\`python
+def read_market(symbol:str, date:int)->pd.DataFrame:
+    file_name = "%s_%d_%s.csv" % (symbol, date, "market_data")
+    file_path = os.path.join("/ssd_data/stock", str(date), "market_data", file_name)
+    df= pd.read_csv(
+        file_path,
+        dtype={"symbol": str},
+        memory_map=True,
+        engine="c",
+        low_memory=False,
+    )
+    df.exchtime=pd.to_timedelta(df.exchtime/1e6,unit='s')+pd.Timestamp('1970-01-01 08:00:00')
+    return df
+\`\`\`
+
+请只返回完整的Python代码字符串（不要包含markdown代码块标记）：`;
+    }
+
+    // 没有diff时的默认提示词
     return `你是一位专业的量化研究员。请根据以下方案说明和伪代码，生成完整的、可执行的Python代码。
 
 方案说明：

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { diffLines } from 'diff';
 
 // 动态导入Plotly以避免SSR问题
 const Plot = dynamic(() => import('react-plotly.js').then(mod => mod.default), {
@@ -53,6 +54,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
     const [editedCode, setEditedCode] = useState('');
     const [editedDescription, setEditedDescription] = useState('');
     const [editedPseudocode, setEditedPseudocode] = useState('');
+    // 保存原始伪代码，用于生成diff
+    const originalPseudocodeRef = useRef('');
 
     // 加载探索方案
     useEffect(() => {
@@ -93,6 +96,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                 setEditedCode(initialVariant.code || '');
                 setEditedDescription(initialVariant.description || '');
                 setEditedPseudocode(initialVariant.pseudocode || '');
+                // 保存原始伪代码用于diff
+                originalPseudocodeRef.current = initialVariant.pseudocode || '';
             } else {
                 // 未生成，需要调用生成API
                 await generateExploration();
@@ -139,6 +144,8 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                 setEditedCode(initialVariant.code || '');
                 setEditedDescription(initialVariant.description || '');
                 setEditedPseudocode(initialVariant.pseudocode || '');
+                // 保存原始伪代码用于diff
+                originalPseudocodeRef.current = initialVariant.pseudocode || '';
             } else {
                 setError(data.error || '生成失败');
             }
@@ -307,6 +314,32 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
         setEditedCode(newVariant.code || '');
         setEditedDescription(newVariant.description || '');
         setEditedPseudocode(newVariant.pseudocode || '');
+        // 切换tab时更新原始伪代码
+        originalPseudocodeRef.current = newVariant.pseudocode || '';
+    };
+
+    // 计算伪代码的diff，生成类似git diff的格式
+    const computePseudocodeDiff = (original, current) => {
+        if (!original || original === current) {
+            return null; // 没有变更
+        }
+        
+        const diffResult = diffLines(original, current);
+        let diffText = '';
+        let hasChanges = false;
+        
+        diffResult.forEach((part) => {
+            if (part.added) {
+                diffText += part.value.split('\n').map(line => line ? `+ ${line}` : '+').join('\n') + '\n';
+                hasChanges = true;
+            } else if (part.removed) {
+                diffText += part.value.split('\n').map(line => line ? `- ${line}` : '-').join('\n') + '\n';
+                hasChanges = true;
+            }
+            // 未修改的行不显示，保持diff简洁
+        });
+        
+        return hasChanges ? diffText.trim() : null;
     };
 
     // 根据说明和伪代码生成代码
@@ -314,6 +347,9 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
         try {
             setGeneratingCode(true);
             setError(null);
+
+            // 计算伪代码的diff
+            const pseudocodeDiff = computePseudocodeDiff(originalPseudocodeRef.current, editedPseudocode);
 
             const res = await fetch('/api/explore/generate-code', {
                 method: 'POST',
@@ -323,13 +359,16 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                     variantIndex: activeTab,
                     description: editedDescription,
                     pseudocode: editedPseudocode,
-                    currentCode: editedCode
+                    currentCode: editedCode,
+                    pseudocodeDiff // 传入diff信息
                 })
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
                 setEditedCode(data.code);
+                // 更新原始伪代码（生成后，当前伪代码变为新的"原始状态"）
+                originalPseudocodeRef.current = editedPseudocode;
                 // 自动保存
                 const newVariants = [...variants];
                 newVariants[activeTab] = {

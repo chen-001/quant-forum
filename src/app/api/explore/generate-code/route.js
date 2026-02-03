@@ -15,14 +15,14 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { commentId, variantIndex, description, pseudocode, currentCode } = body;
+        const { commentId, variantIndex, description, pseudocode, currentCode, pseudocodeDiff } = body;
 
         if (!description || !pseudocode) {
             return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
         // 调用AI生成代码
-        const prompt = getGenerateCodeFromDescriptionPrompt(description, pseudocode, currentCode);
+        const prompt = getGenerateCodeFromDescriptionPrompt(description, pseudocode, currentCode, pseudocodeDiff);
         const response = await callZenmuxAI(prompt, []);
         let generatedCode = response.choices[0].message.content;
 
