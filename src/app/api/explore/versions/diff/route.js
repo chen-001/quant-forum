@@ -43,7 +43,10 @@ export async function GET(request) {
                 createdBy: oldVersion.created_by_name,
                 note: oldVersion.note,
                 tags: oldVersion.tags,
-                isImportant: oldVersion.is_important
+                isImportant: oldVersion.is_important,
+                code: oldVersion.code,
+                pseudocode: oldVersion.pseudocode,
+                description: oldVersion.description
             },
             newVersion: {
                 id: newVersion.id,
@@ -51,7 +54,10 @@ export async function GET(request) {
                 createdBy: newVersion.created_by_name,
                 note: newVersion.note,
                 tags: newVersion.tags,
-                isImportant: newVersion.is_important
+                isImportant: newVersion.is_important,
+                code: newVersion.code,
+                pseudocode: newVersion.pseudocode,
+                description: newVersion.description
             },
             codeDiff: codeDiff.map(part => ({
                 value: part.value,
