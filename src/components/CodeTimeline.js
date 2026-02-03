@@ -115,10 +115,11 @@ export default function CodeTimeline({
         }
     };
 
-    // 格式化时间
+    // 格式化时间（东八区）
     const formatTime = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleString('zh-CN', {
+            timeZone: 'Asia/Shanghai',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
