@@ -4,10 +4,22 @@ import { useState } from 'react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 
 // 代码 diff 查看器组件
-export default function CodeDiffViewer({ oldCode, newCode, oldLabel = '旧版本', newLabel = '新版本', splitView = false }) {
+export default function CodeDiffViewer({ 
+    oldCode, 
+    newCode, 
+    oldPseudocode, 
+    newPseudocode,
+    oldLabel = '旧版本', 
+    newLabel = '新版本', 
+    splitView = false 
+}) {
     const [viewMode, setViewMode] = useState(splitView ? 'split' : 'unified');
+    const [activeTab, setActiveTab] = useState('code'); // 'code' | 'pseudocode'
 
-    if (!oldCode || !newCode) {
+    const hasCodeDiff = oldCode !== undefined && newCode !== undefined;
+    const hasPseudocodeDiff = oldPseudocode !== undefined && newPseudocode !== undefined;
+
+    if (!hasCodeDiff && !hasPseudocodeDiff) {
         return <div style={{ padding: '20px', color: 'var(--text-muted)' }}>无差异数据</div>;
     }
 
@@ -44,12 +56,46 @@ export default function CodeDiffViewer({ oldCode, newCode, oldLabel = '旧版本
         }
     };
 
+    const renderDiffContent = () => {
+        if (activeTab === 'code' && hasCodeDiff) {
+            return (
+                <ReactDiffViewer
+                    oldValue={oldCode || ''}
+                    newValue={newCode || ''}
+                    splitView={viewMode === 'split'}
+                    leftTitle={oldLabel}
+                    rightTitle={newLabel}
+                    showDiffOnly={false}
+                    styles={diffStyles}
+                />
+            );
+        }
+        if (activeTab === 'pseudocode' && hasPseudocodeDiff) {
+            return (
+                <ReactDiffViewer
+                    oldValue={oldPseudocode || ''}
+                    newValue={newPseudocode || ''}
+                    splitView={viewMode === 'split'}
+                    leftTitle={oldLabel}
+                    rightTitle={newLabel}
+                    showDiffOnly={false}
+                    styles={diffStyles}
+                />
+            );
+        }
+        return <div style={{ padding: '20px', color: 'var(--text-muted)' }}>无差异数据</div>;
+    };
+
     return (
         <div style={{ 
             border: '1px solid var(--border-color)', 
             borderRadius: 'var(--radius-md)',
             overflow: 'hidden',
-            backgroundColor: 'var(--bg-secondary)'
+            backgroundColor: 'var(--bg-secondary)',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0
         }}>
             {/* 工具栏 */}
             <div style={{ 
@@ -60,8 +106,44 @@ export default function CodeDiffViewer({ oldCode, newCode, oldLabel = '旧版本
                 borderBottom: '1px solid var(--border-color)',
                 backgroundColor: 'var(--bg-primary)'
             }}>
-                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>代码对比</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                {/* 左侧：Tab 切换 */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    {hasCodeDiff && (
+                        <button
+                            onClick={() => setActiveTab('code')}
+                            style={{
+                                padding: '4px 12px',
+                                fontSize: '12px',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-sm)',
+                                backgroundColor: activeTab === 'code' ? 'var(--primary)' : 'var(--bg-secondary)',
+                                color: activeTab === 'code' ? 'white' : 'inherit',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            💻 代码对比
+                        </button>
+                    )}
+                    {hasPseudocodeDiff && (
+                        <button
+                            onClick={() => setActiveTab('pseudocode')}
+                            style={{
+                                padding: '4px 12px',
+                                fontSize: '12px',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-sm)',
+                                backgroundColor: activeTab === 'pseudocode' ? 'var(--primary)' : 'var(--bg-secondary)',
+                                color: activeTab === 'pseudocode' ? 'white' : 'inherit',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            📝 伪代码对比
+                        </button>
+                    )}
+                </div>
+
+                {/* 右侧：视图模式切换 */}
+                <div style={{ display: 'flex', gap: '4px' }}>
                     <button
                         onClick={() => setViewMode('unified')}
                         style={{
@@ -94,16 +176,8 @@ export default function CodeDiffViewer({ oldCode, newCode, oldLabel = '旧版本
             </div>
 
             {/* Diff 内容 */}
-            <div style={{ maxHeight: '500px', overflow: 'auto' }}>
-                <ReactDiffViewer
-                    oldValue={oldCode}
-                    newValue={newCode}
-                    splitView={viewMode === 'split'}
-                    leftTitle={oldLabel}
-                    rightTitle={newLabel}
-                    showDiffOnly={false}
-                    styles={diffStyles}
-                />
+            <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+                {renderDiffContent()}
             </div>
         </div>
     );

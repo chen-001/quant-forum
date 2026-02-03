@@ -820,7 +820,7 @@ export default function ExploreModal({ commentId, commentContent, onClose }) {
                             style={pseudocodeEditorStyle}
                             value={editedPseudocode}
                             onChange={(e) => setEditedPseudocode(e.target.value)}
-                            placeholder="输入计算流程伪代码..."
+                            placeholder="【数据读取阶段】\n1. 读取逐笔成交数据 (read_trade)\n   - 使用字段: `price`, `volume`\n\n【数据预处理阶段】\n2. 时间对齐处理\n   - 应用adjust_afternoon调整下午时间\n\n【因子计算阶段】\n3. 计算指标\n   - 公式: indicator = sum(`price` * `volume`) / sum(`volume`)\n\n【结果输出阶段】\n4. 返回结果\n   - factor_dict: {'indicator': indicator}"
                             spellCheck={false}
                         />
                     </div>

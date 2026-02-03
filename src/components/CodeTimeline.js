@@ -240,15 +240,17 @@ export default function CodeTimeline({
             {/* Diff 弹窗 */}
             {showDiffModal && diffData && (
                 <div style={overlayStyle} onClick={() => setShowDiffModal(false)}>
-                    <div style={{ ...modalStyle, width: '90vw', maxWidth: '1200px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...diffModalStyle }} onClick={e => e.stopPropagation()}>
                         <div style={headerStyle}>
                             <h3 style={{ margin: 0, fontSize: '16px' }}>📊 版本对比</h3>
                             <button onClick={() => setShowDiffModal(false)} style={closeButtonStyle}>✕</button>
                         </div>
-                        <div style={{ padding: '16px', maxHeight: '70vh', overflow: 'auto' }}>
+                        <div style={{ padding: '16px', flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                             <CodeDiffViewer
                                 oldCode={diffData.oldVersion.code}
                                 newCode={diffData.newVersion.code}
+                                oldPseudocode={diffData.oldVersion.pseudocode}
+                                newPseudocode={diffData.newVersion.pseudocode}
                                 oldLabel={`版本 #${diffData.oldVersion.id} (${formatTime(diffData.oldVersion.createdAt)})`}
                                 newLabel={`版本 #${diffData.newVersion.id} (${formatTime(diffData.newVersion.createdAt)})`}
                                 splitView={true}
@@ -364,6 +366,18 @@ const modalStyle = {
     width: '90vw',
     maxWidth: '600px',
     maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+};
+
+// 版本对比弹窗样式 - 与探索页面相同大小
+const diffModalStyle = {
+    backgroundColor: 'var(--bg-card)',
+    borderRadius: 'var(--radius-lg)',
+    width: '95vw',
+    height: '95vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',

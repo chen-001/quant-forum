@@ -194,9 +194,64 @@ def read_market_pair(symbol:str, date:int)->tuple[pd.DataFrame,pd.DataFrame]:
 3. **时间格式**：所有时间字段均为datetime64[ns]格式，便于pandas时间序列分析
 4. **必须实现因子计算**：代码中必须包含具体的因子计算逻辑，返回实际的计算结果，不能只是TODO注释
 
+## 伪代码格式要求
+
+伪代码必须详细描述计算流程，包含以下要素：
+
+### 1. 阶段划分
+使用【xxx阶段】明确标注各个计算阶段，例如：
+- 【数据读取阶段】
+- 【数据预处理阶段】
+- 【特征计算阶段】
+- 【因子合成阶段】
+- 【结果输出阶段】
+
+### 2. 步骤详细说明
+每个步骤必须包含：
+- 步骤序号和标题
+- 使用的数据字段（明确列出字段名）
+- 计算公式或逻辑（使用伪代码语法）
+- 中间变量命名
+
+### 3. 数据字段标注
+- 读取数据时必须注明使用的具体字段
+- 字段名使用反引号标注，如 \`price\`, \`volume\`
+- 注明字段来源（逐笔成交/盘口快照）
+
+### 4. 示例格式
+\`\`\`
+【数据读取阶段】
+1. 读取逐笔成交数据 (read_trade)
+   - 使用字段: \`price\`(成交价格), \`volume\`(成交量), \`flag\`(买卖标志)
+   - 数据筛选: 排除撤单(flag=32)，保留主买(flag=66)和主卖(flag=83)
+
+2. 读取盘口快照数据 (read_market)  
+   - 使用字段: \`bid_vol1\`(买一量), \`ask_vol1\`(卖一量), \`last_prc\`(最新价)
+
+【数据预处理阶段】
+3. 时间对齐处理
+   - 对trade_data和market_data应用adjust_afternoon调整下午时间
+
+4. 计算中间价格序列
+   - mid_price = (\`ask_prc1\` + \`bid_prc1\`) / 2
+
+【因子计算阶段】
+5. 计算买卖压力指标
+   - buy_pressure = sum(\`volume\` * flag_is_buy) / sum(\`volume\`)
+   - 其中flag_is_buy = (\`flag\` == 66)
+
+6. 计算盘口不平衡度
+   - imbalance = (\`bid_vol1\` - \`ask_vol1\`) / (\`bid_vol1\` + \`ask_vol1\`)
+
+【结果输出阶段】
+7. 返回结果
+   - factor_dict: {'buy_pressure': buy_pressure, 'imbalance': imbalance}
+   - key_variables_dict: {'mid_price': mid_price}
+\`\`\`
+
 请返回JSON格式（严格遵守以下要求）：
 1. 必须是合法的JSON格式，可以被JSON.parse直接解析
-2. **pseudocode字段必须使用普通双引号字符串，所有换行使用\n转义，绝对不能使用三引号"""**
+2. **pseudocode字段必须使用普通双引号字符串，所有换行使用\\n转义，绝对不能使用三引号"""**
 3. 不要包含markdown代码块标记
 
 返回格式示例：
@@ -205,20 +260,8 @@ def read_market_pair(symbol:str, date:int)->tuple[pd.DataFrame,pd.DataFrame]:
     {
       "name": "方案1名称",
       "description": "方案描述...",
-      "pseudocode": "步骤1: 读取数据\n步骤2: 计算指标\n步骤3: 返回结果",
-      "code": "import pandas as pd\ndef calculate_factor(code, date):\n    ..."
-    },
-    {
-      "name": "方案2名称",
-      "description": "方案描述...",
-      "pseudocode": "步骤1: ...\n步骤2: ...",
-      "code": "..."
-    },
-    {
-      "name": "方案3名称",
-      "description": "方案描述...",
-      "pseudocode": "步骤1: ...\n步骤2: ...",
-      "code": "..."
+      "pseudocode": "【数据读取阶段】\\n1. 读取逐笔成交数据\\n   - 使用字段: \`price\`, \`volume\`\\n【因子计算阶段】\\n2. 计算VWAP\\n   - vwap = sum(\`price\` * \`volume\`) / sum(\`volume\`)\\n【结果输出阶段】\\n3. 返回 {'vwap': vwap}",
+      "code": "import pandas as pd\\ndef calculate_factor(code, date):\\n    ..."
     }
   ]
 }
@@ -234,7 +277,28 @@ export function getDefaultVariants() {
         {
             name: "基础实现方案",
             description: "基于描述的直接实现，使用最直观的方法",
-            pseudocode: `步骤1. 数据准备\n读取逐笔成交数据\n读取盘口快照数据\n\n步骤2. 因子计算\n计算成交量加权平均价 VWAP = sum(价格 * 成交量) / sum(成交量)\n\n步骤3. 返回结果\n返回 VWAP 作为因子值`,
+            pseudocode: `【数据读取阶段】
+1. 读取逐笔成交数据 (read_trade)
+   - 使用字段: \`price\`(成交价格), \`volume\`(成交量), \`flag\`(买卖标志)
+   - 数据筛选: 排除撤单(flag=32)，保留主买(flag=66)和主卖(flag=83)
+
+2. 读取盘口快照数据 (read_market)
+   - 使用字段: \`bid_vol1\`(买一量), \`ask_vol1\`(卖一量), \`last_prc\`(最新价)
+
+【数据预处理阶段】
+3. 时间对齐处理
+   - 对trade_data和market_data应用adjust_afternoon调整下午时间
+   - 检查数据是否为空，空数据返回默认值
+
+【因子计算阶段】
+4. 计算成交量加权平均价(VWAP)
+   - 公式: vwap = sum(\`price\` * \`volume\`) / sum(\`volume\`)
+   - 使用全天的逐笔成交数据计算
+
+【结果输出阶段】
+5. 返回结果
+   - factor_dict: {'vwap': vwap}
+   - key_variables_dict: {'prices': trade_data['price']}`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
@@ -253,7 +317,29 @@ def calculate_factor(code, date):
         {
             name: "时间序列方案",
             description: "将因子计算为时间序列，保留更多细节信息",
-            pseudocode: `步骤1. 数据准备\n读取逐笔成交数据\n\n步骤2. 时间聚合\n按分钟分组聚合成交量\n\n步骤3. 返回结果\n返回每分钟成交量时间序列`,
+            pseudocode: `【数据读取阶段】
+1. 读取逐笔成交数据 (read_trade)
+   - 使用字段: \`exchtime\`(交易时间), \`price\`(成交价格), \`volume\`(成交量)
+
+【数据预处理阶段】
+2. 时间对齐处理
+   - 对trade_data应用adjust_afternoon调整下午时间
+   - 检查数据是否为空，空数据返回空Series
+
+3. 时间粒度转换
+   - 将\`exchtime\`向下取整到分钟级别
+   - 生成新字段'minute'表示所属分钟
+
+【因子计算阶段】
+4. 按分钟聚合成交量
+   - 按'minute'字段分组
+   - 对每个分组求和\`volume\`
+   - 结果: volume_by_minute (时间序列)
+
+【结果输出阶段】
+5. 返回结果
+   - factor_dict: {'volume_by_minute': volume_by_minute}
+   - key_variables_dict: {'volume': trade_data['volume']}`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
@@ -273,7 +359,31 @@ def calculate_factor(code, date):
         {
             name: "盘口特征方案",
             description: "基于盘口快照数据计算因子",
-            pseudocode: `步骤1. 数据准备\n读取盘口快照数据\n\n步骤2. 计算买卖量\n汇总买一量\n汇总卖一量\n\n步骤3. 计算不平衡度\n买卖不平衡度 = (买一量 - 卖一量) / (买一量 + 卖一量)\n返回不平衡度`,
+            pseudocode: `【数据读取阶段】
+1. 读取逐笔成交数据 (read_trade)
+   - 用于数据完整性检查
+
+2. 读取盘口快照数据 (read_market)
+   - 使用字段: \`bid_vol1\`(买一量), \`ask_vol1\`(卖一量)
+
+【数据预处理阶段】
+3. 时间对齐处理
+   - 对market_data应用adjust_afternoon调整下午时间
+   - 检查数据是否为空，空数据返回默认值
+
+【因子计算阶段】
+4. 计算买卖盘总量
+   - bid_vol_sum = sum(\`bid_vol1\`)  # 买一量全天总和
+   - ask_vol_sum = sum(\`ask_vol1\`)  # 卖一量全天总和
+
+5. 计算买卖不平衡度
+   - 公式: imbalance = (bid_vol_sum - ask_vol_sum) / (bid_vol_sum + ask_vol_sum)
+   - 处理分母为0的情况: 如果总和为0，imbalance = 0
+
+【结果输出阶段】
+6. 返回结果
+   - factor_dict: {'imbalance': imbalance}
+   - key_variables_dict: {'bid_vol': market_data['bid_vol1'], 'ask_vol': market_data['ask_vol1']}`,
             code: `import pure_ocean_breeze.jason as p
 import pandas as pd
 import numpy as np
