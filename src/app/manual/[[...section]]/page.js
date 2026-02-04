@@ -1004,6 +1004,18 @@ export default function ManualPage() {
                         </div>
                     ))}
                 </nav>
+                
+                {/* 桌面版下载按钮 */}
+                <a 
+                    href="https://github.com/chen-001/quant-forum/actions/runs/21678787540" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="manual-download-btn"
+                >
+                    <span className="manual-download-icon">📥</span>
+                    <span className="manual-download-text">下载桌面版</span>
+                    <span className="manual-download-subtext">Win/Mac/Linux</span>
+                </a>
             </aside>
 
             {/* 主内容区 */}
