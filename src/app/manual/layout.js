@@ -7,12 +7,8 @@ export const metadata = {
 
 export default function ManualLayout({ children }) {
     return (
-        <html lang="zh-CN">
-            <body>
-                <div className="manual-layout">
-                    {children}
-                </div>
-            </body>
-        </html>
+        <div className="manual-layout">
+            {children}
+        </div>
     );
 }
