@@ -155,6 +155,11 @@ const manualContent = {
     </p>
     
     <div class="manual-home-sections">
+        <a href="https://github.com/chen-001/quant-forum/actions/runs/21678787540" target="_blank" rel="noopener noreferrer" class="manual-home-card">
+            <div class="manual-home-card-icon">📥</div>
+            <h3>下载桌面版</h3>
+            <p>Windows/macOS/Linux 三平台支持，点击下载</p>
+        </a>
         <a href="/manual/quickstart" class="manual-home-card">
             <div class="manual-home-card-icon">🚀</div>
             <h3>快速开始</h3>
