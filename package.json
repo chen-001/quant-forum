@@ -13,7 +13,8 @@
     "electron:dev": "NODE_ENV=development electron .",
     "electron:build": "electron-builder",
     "electron:build:mac": "electron-builder --mac",
-    "electron:build:win": "electron-builder --win"
+    "electron:build:win": "electron-builder --win",
+    "electron:build:linux": "electron-builder --linux"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -61,6 +62,16 @@
         "nsis",
         "portable"
       ]
+    },
+    "linux": {
+      "icon": "electron/icons/icon.ico",
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm",
+        "tar.gz"
+      ],
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
