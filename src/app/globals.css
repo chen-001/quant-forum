@@ -1740,11 +1740,32 @@ a:hover {
   text-align: center;
 }
 
-.table-col-actions-cell {
-  width: 0;
+/* 表头样式 */
+.table-header-row {
+  height: 32px;
+}
+
+.table-row-actions-header {
+  width: 30px;
   padding: 0;
   border: none;
-  position: relative;
+  background: var(--bg-tertiary);
+}
+
+.table-col-header {
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  background: var(--bg-tertiary);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.row-resize-header {
+  width: 6px;
+  padding: 0;
+  border: none;
+  background: var(--bg-tertiary);
 }
 
 .table-action-btn {
@@ -1768,7 +1789,7 @@ a:hover {
 }
 
 .table-action-btn.col-delete {
-  position: absolute;
+  display: inline-flex;
 }
 
 .table-help {

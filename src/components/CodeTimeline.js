@@ -263,12 +263,12 @@ export default function CodeTimeline({
             {/* 预览弹窗 */}
             {showPreviewModal && previewVersion && (
                 <div style={overlayStyle} onClick={() => setShowPreviewModal(false)}>
-                    <div style={{ ...modalStyle, width: '80vw', maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
+                    <div style={previewModalStyle} onClick={e => e.stopPropagation()}>
                         <div style={headerStyle}>
                             <h3 style={{ margin: 0, fontSize: '16px' }}>👁️ 版本预览</h3>
                             <button onClick={() => setShowPreviewModal(false)} style={closeButtonStyle}>✕</button>
                         </div>
-                        <div style={{ padding: '16px' }}>
+                        <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>方案说明</div>
                                 <div style={{ fontSize: '13px', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px' }}>
@@ -277,13 +277,13 @@ export default function CodeTimeline({
                             </div>
                             <div style={{ marginBottom: '16px' }}>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>伪代码</div>
-                                <pre style={{ fontSize: '12px', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'auto', maxHeight: '150px' }}>
+                                <pre style={{ fontSize: '12px', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'auto', maxHeight: '40vh' }}>
                                     {previewVersion.pseudocode}
                                 </pre>
                             </div>
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>代码</div>
-                                <pre style={{ fontSize: '12px', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'auto', maxHeight: '300px' }}>
+                                <pre style={{ fontSize: '12px', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', overflow: 'auto', maxHeight: '50vh' }}>
                                     {previewVersion.code}
                                 </pre>
                             </div>
@@ -374,6 +374,18 @@ const modalStyle = {
 
 // 版本对比弹窗样式 - 与探索页面相同大小
 const diffModalStyle = {
+    backgroundColor: 'var(--bg-card)',
+    borderRadius: 'var(--radius-lg)',
+    width: '95vw',
+    height: '95vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+};
+
+// 版本预览弹窗样式 - 与探索页面相同大小
+const previewModalStyle = {
     backgroundColor: 'var(--bg-card)',
     borderRadius: 'var(--radius-lg)',
     width: '95vw',

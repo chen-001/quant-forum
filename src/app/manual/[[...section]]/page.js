@@ -2,6 +2,144 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import ImageLightbox from '@/components/ImageLightbox';
+
+// 截图组件 - 检测图片是否存在并显示
+function Screenshot({ filename, onImageClick }) {
+    const [exists, setExists] = useState(false);
+    const [loaded, setLoaded] = useState(false);
+    
+    useEffect(() => {
+        // 检测图片是否存在
+        const img = new Image();
+        img.onload = () => {
+            setExists(true);
+            setLoaded(true);
+        };
+        img.onerror = () => {
+            setExists(false);
+            setLoaded(true);
+        };
+        img.src = `/manual/screenshots/${filename}`;
+    }, [filename]);
+    
+    if (!loaded) {
+        return (
+            <div className="manual-screenshot-placeholder loading">
+                <div className="manual-screenshot-placeholder-icon">⏳</div>
+                <div className="manual-screenshot-placeholder-text">检测中...</div>
+            </div>
+        );
+    }
+    
+    if (exists) {
+        return (
+            <div className="manual-screenshot">
+                <img 
+                    src={`/manual/screenshots/${filename}`} 
+                    alt={filename}
+                    className="manual-screenshot-img"
+                    onClick={() => onImageClick && onImageClick(`/manual/screenshots/${filename}`, filename)}
+                    style={{ cursor: 'zoom-in' }}
+                />
+            </div>
+        );
+    }
+    
+    return (
+        <div className="manual-screenshot-placeholder">
+            <div className="manual-screenshot-placeholder-icon">🖼️</div>
+            <div className="manual-screenshot-placeholder-text">截图待添加</div>
+            <div className="manual-screenshot-placeholder-filename">{filename}</div>
+        </div>
+    );
+}
+
+// 内容渲染组件
+function ContentRenderer({ content, onImageClick }) {
+    // 处理截图占位符
+    const parts = processContent(content);
+    
+    return (
+        <>
+            {parts.map((part, index) => {
+                if (part.type === 'screenshot') {
+                    return <Screenshot key={index} filename={part.filename} onImageClick={onImageClick} />;
+                }
+                return <div key={index} dangerouslySetInnerHTML={{ __html: part.content }} />;
+            })}
+        </>
+    );
+}
+
+// 处理内容中的截图占位符
+function processContent(content) {
+    // 将占位符转换为特殊标记，后续用组件渲染
+    const placeholderRegex = /<div class="manual-screenshot-placeholder">\s*<div class="manual-screenshot-placeholder-icon">.*?<\/div>\s*<div class="manual-screenshot-placeholder-text">.*?<\/div>\s*<div class="manual-screenshot-placeholder-filename">(.*?)<\/div>\s*<\/div>/g;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = placeholderRegex.exec(content)) !== null) {
+        // 添加普通 HTML 部分
+        if (match.index > lastIndex) {
+            parts.push({
+                type: 'html',
+                content: content.slice(lastIndex, match.index)
+            });
+        }
+        // 添加截图组件
+        parts.push({
+            type: 'screenshot',
+            filename: match[1]
+        });
+        lastIndex = match.index + match[0].length;
+    }
+    
+    // 添加剩余部分
+    if (lastIndex < content.length) {
+        parts.push({
+            type: 'html',
+            content: content.slice(lastIndex)
+        });
+    }
+    
+    return parts;
+}
+
+// 提取大纲并添加锚点 - 统一处理确保ID一致
+function processContentWithOutline(content) {
+    const outline = [];
+    let counter = 0;
+    
+    // 生成标题的唯一ID
+    const generateId = (text) => {
+        const plainText = text.replace(/<[^>]+>/g, '');
+        const baseId = plainText.toLowerCase()
+            .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
+            .replace(/^-|-$/g, '');
+        return counter > 0 ? `${baseId}-${counter}` : baseId;
+    };
+    
+    // 为内容添加锚点，同时提取大纲
+    const processedContent = content.replace(/<h([234])([^>]*)>(.*?)<\/h[234]>/g, (match, level, attrs, text) => {
+        const plainText = text.replace(/<[^>]+>/g, '');
+        const id = generateId(text);
+        
+        outline.push({
+            level: parseInt(level),
+            text: plainText,
+            id: id
+        });
+        
+        counter++;
+        return `<h${level}${attrs} id="${id}">${text}</h${level}>`;
+    });
+    
+    return { outline, processedContent };
+}
 
 // 手册内容数据
 const manualContent = {
@@ -390,12 +528,39 @@ const manualContent = {
 <h2>AI辅助功能</h2>
 <p>平台集成了多种AI能力，帮助您更高效地进行因子研究和讨论。</p>
 
-<h3>AI聊天助手</h3>
-<p>页面右下角的浮动按钮可以打开AI聊天窗口：</p>
+<h3>智能生成摘要</h3>
+<p>系统会自动为帖子生成AI摘要，包括主题、逻辑、因子、概念等字段，支持人工编辑。</p>
+
+<h4>技术架构</h4>
 <ul>
-    <li>根据当前页面上下文提供智能回复</li>
-    <li>支持流式输出</li>
-    <li>可拖拽调整窗口位置</li>
+    <li><strong>内核</strong>：OpenCode内核</li>
+    <li><strong>语言模型</strong>：GLM-4.7模型</li>
+    <li><strong>图像识别</strong>：GLM-4.6V识图（支持图片内容理解）</li>
+    <li><strong>更新频率</strong>：每5小时自动检测更新，补充生成摘要</li>
+</ul>
+
+<div class="manual-screenshot-placeholder">
+    <div class="manual-screenshot-placeholder-icon">🖼️</div>
+    <div class="manual-screenshot-placeholder-text">截图待添加</div>
+    <div class="manual-screenshot-placeholder-filename">ai_summaries_page.png</div>
+</div>
+
+<div class="manual-tip">
+    <div class="manual-tip-title">💡 提示</div>
+    <p>用户编辑的摘要会优先于AI生成的内容显示，也可以随时清除恢复AI版本。</p>
+</div>
+
+<h3>AI对话</h3>
+<p>页面右下角的浮动按钮可以打开AI聊天窗口：</p>
+
+<h4>技术架构</h4>
+<ul>
+    <li><strong>上下文</strong>：基于帖子摘要提供智能回复</li>
+    <li><strong>工具调用</strong>：自定义工具搜索增强</li>
+    <li><strong>内核</strong>：OpenCode内核</li>
+    <li><strong>语言模型</strong>：GLM-4.7模型</li>
+    <li><strong>输出方式</strong>：支持流式输出</li>
+    <li><strong>交互</strong>：可拖拽调整窗口位置</li>
 </ul>
 
 <div class="manual-screenshot-placeholder">
@@ -410,8 +575,14 @@ const manualContent = {
     <div class="manual-screenshot-placeholder-filename">ai_chat_window.png</div>
 </div>
 
-<h3>因子探索工具</h3>
-<p>这是平台最强大的功能之一，可以从评论自动生成可执行的因子代码：</p>
+<h3>因子探索</h3>
+<p>这是平台最强大的功能之一，可以从评论自动生成可执行的因子代码。</p>
+
+<h4>技术架构</h4>
+<ul>
+    <li><strong>模型</strong>：Kimi-K2.5模型API</li>
+    <li><strong>多模态</strong>：直接读取图片与文字信息</li>
+</ul>
 
 <h4>启动探索</h4>
 <p>在评论下方点击"🔬 探索"按钮，AI将分析评论内容并生成多个探索方案。</p>
@@ -436,6 +607,27 @@ const manualContent = {
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
     <div class="manual-screenshot-placeholder-filename">ai_explore_modal_overview.png</div>
+</div>
+
+<h4>基于伪代码生成代码</h4>
+<p>平台支持通过伪代码快速生成可执行的Python代码，这是连接思路与实现的关键功能：</p>
+
+<ul>
+    <li><strong>伪代码编辑区</strong>：在探索面板右上角，可以用自然语言描述因子逻辑</li>
+    <li><strong>一键生成</strong>：点击"基于伪代码生成代码"按钮，AI将伪代码转换为完整Python代码</li>
+    <li><strong>智能补全</strong>：生成的代码包含数据获取、因子计算、结果输出等完整流程</li>
+    <li><strong>灵活调整</strong>：可以在伪代码和生成代码之间反复迭代优化</li>
+</ul>
+
+<div class="manual-tip">
+    <div class="manual-tip-title">💡 提示</div>
+    <p>伪代码不需要严格的语法，用自然语言描述计算步骤即可，例如："计算5日收盘价均值，然后除以10日收盘价均值"。</p>
+</div>
+
+<div class="manual-screenshot-placeholder">
+    <div class="manual-screenshot-placeholder-icon">🖼️</div>
+    <div class="manual-screenshot-placeholder-text">截图待添加</div>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_pseudocode.png</div>
 </div>
 
 <h4>生成与执行流程</h4>
@@ -463,25 +655,32 @@ const manualContent = {
     <div class="manual-screenshot-placeholder-filename">ai_explore_timeline.png</div>
 </div>
 
-<h3>智能摘要管理</h3>
-<p>系统会自动为帖子生成AI摘要，包括主题、逻辑、因子、概念等字段，支持人工编辑。</p>
+<h4>比较不同历史版本</h4>
+<p>版本历史功能支持对比不同版本的代码变更，帮助您追踪修改历史：</p>
+
+<ul>
+    <li><strong>选择版本</strong>：在历史列表中选择两个不同的版本</li>
+    <li><strong>差异对比</strong>：系统会以高亮形式展示代码增减变化</li>
+    <li><strong>代码合并</strong>：支持将旧版本中的代码片段合并到当前版本</li>
+    <li><strong>一键恢复</strong>：可以快速恢复到任意历史版本</li>
+</ul>
+
+<div class="manual-tip">
+    <div class="manual-tip-title">💡 应用场景</div>
+    <p>当您发现新版代码有问题时，可以快速对比上一个正常版本，定位问题所在。同时也可以将旧版本中的优秀代码片段合并到当前版本，实现版本的精华整合。</p>
+</div>
 
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai_summaries_page.png</div>
-</div>
-
-<div class="manual-tip">
-    <div class="manual-tip-title">💡 提示</div>
-    <p>用户编辑的摘要会优先于AI生成的内容显示，也可以随时清除恢复AI版本。</p>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_version_diff.png</div>
 </div>
         `
     },
     'personal': {
         title: '📋 个人工作管理',
         prev: { path: '/manual/ai', title: 'AI辅助功能' },
-        next: null,
+        next: { path: '/manual/changelog', title: '更新日志' },
         content: `
 <h2>个人工作管理</h2>
 <p>平台提供完善的个人工作管理工具，帮助您追踪感兴趣的内容和待办事项。</p>
@@ -563,6 +762,129 @@ const manualContent = {
     <p>您已阅读完所有用户手册内容。如有问题，欢迎通过AI聊天助手咨询。</p>
 </div>
         `
+    },
+    'changelog': {
+        title: '📜 更新日志',
+        prev: { path: '/manual/personal', title: '个人工作管理' },
+        next: null,
+        content: `
+<h2>更新日志</h2>
+<p>记录量化因子交流论坛的每一次成长与进步。</p>
+
+<h3>2026.01.09 - 项目上线</h3>
+<p>AI因子论坛正式上线！</p>
+<p><strong>主要功能：</strong></p>
+<ul>
+    <li>多AI对话页面展示：同时打开多个AI聊天页面，查看不同AI的对话内容</li>
+    <li>正文编辑：支持Markdown格式，可粘贴图片</li>
+    <li>评论系统：支持发表评论、回复评论</li>
+    <li>成果展示：展示因子研究的结果，支持粘贴图片</li>
+    <li>多维度评分：从另类程度、测试效果、构造新颖、想法趣味、完善程度五个维度打分</li>
+</ul>
+<p><strong>访问地址：</strong></p>
+<ul>
+    <li>校内VPN：http://192.168.200.60:5203/</li>
+    <li>公网访问：http://65.49.220.66:5203/</li>
+</ul>
+<p><strong>开源地址：</strong>https://github.com/chen-001/quant-forum</p>
+
+<h3>2026.01.10 - 功能升级</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>置顶功能：帖子详情页支持置顶帖子</li>
+    <li>表格帖子：新增表格帖子类型，适合展示字段、prompt技巧等文档</li>
+    <li>文字高亮：正文部分支持选中文字高亮</li>
+    <li>行内评论：任意用户可对正文任意行添加评论</li>
+    <li>想法协作区：帖子详情页新增"很有意思的想法区"，任何人都可以编辑</li>
+    <li>自动备份：每小时自动备份数据，保留最近100次备份记录</li>
+</ul>
+
+<h3>2026.01.13 - 体验优化</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>评论管理：自己发过的评论可以编辑、删除</li>
+    <li>评论筛选：评论区支持按用户名称、内容筛选</li>
+    <li>首页搜索：支持按用户名称、帖子标题、帖子详情页文字筛选</li>
+    <li>时区调整：时间统一改为东八区</li>
+    <li>发帖优化：不再要求必须附带网页链接，链接上限从10个上调为100个</li>
+    <li>桌面应用：推出桌面客户端，支持访问千问、Gemini等平台</li>
+    <li>继续聊天：网页展示区支持"和AI继续聊"功能，聊天内容仅自己可见</li>
+    <li>补充链接：非发帖人也可添加AI对话链接作为补充，链接名称自动带上用户名标识</li>
+</ul>
+
+<h3>2026.01.15 - 讨论区升级</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>标签系统：想法讨论区支持不同标签，每个AI链接自动生成同名标签</li>
+    <li>图片放大：所有位置的图片都支持点击放大查看</li>
+    <li>布局优化：优化页面布局，小屏幕也能浏览更多信息</li>
+</ul>
+
+<h3>2026.01.16 - 收藏与待办</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>收藏功能：
+        <ul>
+            <li>帖子详情页选中文字右键添加到收藏</li>
+            <li>放大查看图片时也可收藏图片</li>
+            <li>收藏默认对所有人可见，可手动设为仅自己可见</li>
+        </ul>
+    </li>
+    <li>待办功能：
+        <ul>
+            <li>帖子详情页选中文字右键添加到待办</li>
+            <li>放大查看图片时可设为待办</li>
+            <li>支持添加说明、标记完成、流转给其他用户</li>
+        </ul>
+    </li>
+    <li>Bug修复：修复正文高亮的bug</li>
+    <li>移动端优化：支持手机访问浏览</li>
+</ul>
+<p><strong>功能用途：</strong></p>
+<ul>
+    <li>收藏：统一收集好想法便于重温，也可与他人共享</li>
+    <li>待办：明确日后要做的想法，便于工作分配</li>
+</ul>
+
+<h3>2026.01.16 - 标签修改</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>支持直接修改想法讨论区评论的标签，无需手动删除重写</li>
+</ul>
+
+<h3>2026.01.20 - AI助手上线</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>AI对话：点击右下角蓝色悬浮按钮，立即开始与AI对话（由OpenCode实现，模型GLM-4.7）</li>
+    <li>智能问答：可对论坛已有内容提问，AI会检索数据库并分析帖子摘要</li>
+    <li>OCR识别：使用GLM-4.6V-Flash模型对图片进行文字识别</li>
+    <li>AI摘要：为每个帖子生成AI摘要，每5小时更新一次</li>
+    <li>窗口调整：AI对话框支持缩放和拖动调整位置</li>
+</ul>
+<p><strong>隐私说明：</strong>AI对话内容和历史记录仅自己可见</p>
+
+<h3>2026.02.03 - 因子探索功能</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>浅色模式：支持浅色/深色主题切换</li>
+    <li>摘要页面：通过OpenCode+GLM-4.7总结每个帖子的核心内容和涉及因子，支持手动修改</li>
+    <li>动态页面：顶部导航栏显示与自己有关的新动态数量和全站新动态数量</li>
+    <li>因子探索：
+        <ul>
+            <li>想法讨论区每个评论增加"探索"按钮</li>
+            <li>首次点击调用Kimi-K2.5根据评论内容写出3种因子构造方法（含代码和伪代码）</li>
+            <li>支持选择单只股票单日执行，查看因子结果和中间变量分布</li>
+            <li>支持手动修改伪代码，AI根据修改生成新代码</li>
+            <li>支持查看代码与伪代码变更历史，对比不同版本差异</li>
+        </ul>
+    </li>
+</ul>
+
+<div class="manual-tip">
+    <div class="manual-tip-title">🎉 感谢使用</div>
+    <p>感谢您使用量化因子交流论坛！我们会持续优化产品体验，如有建议欢迎反馈。</p>
+</div>
+        `
     }
 };
 
@@ -574,12 +896,80 @@ const navStructure = [
     { id: 'advanced', icon: '📊', title: '研究员进阶功能' },
     { id: 'ai', icon: '🤖', title: 'AI辅助功能' },
     { id: 'personal', icon: '📋', title: '个人工作管理' },
+    { id: 'changelog', icon: '📜', title: '更新日志' },
 ];
 
 export default function ManualPage() {
     const params = useParams();
     const section = params?.section?.[0] || '';
     const content = manualContent[section] || manualContent[''];
+    
+    // 灯箱状态
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [currentImage, setCurrentImage] = useState(null);
+    
+    // 当前激活的大纲项
+    const [activeHeading, setActiveHeading] = useState(null);
+    
+    // 处理内容，提取大纲并添加锚点
+    const { outline, processedContent } = section 
+        ? processContentWithOutline(content.content) 
+        : { outline: [], processedContent: content.content };
+    
+    // 监听滚动，更新当前激活的大纲项
+    useEffect(() => {
+        if (!section || outline.length === 0) return;
+        
+        const handleScroll = () => {
+            const headings = document.querySelectorAll('.manual-content h2, .manual-content h3, .manual-content h4');
+            let current = null;
+            
+            headings.forEach((heading) => {
+                const rect = heading.getBoundingClientRect();
+                if (rect.top <= 150) {
+                    current = heading.id;
+                }
+            });
+            
+            setActiveHeading(current);
+        };
+        
+        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+        
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [section, outline.length]);
+    
+    // 处理图片点击
+    const handleImageClick = (src, alt) => {
+        setCurrentImage({ src, alt });
+        setLightboxOpen(true);
+    };
+    
+    // 处理内容中的图片点击（用于 dangerouslySetInnerHTML 中的图片）
+    const handleContentClick = (e) => {
+        const img = e.target.closest('img');
+        if (img && !img.closest('.no-lightbox')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setCurrentImage({
+                src: img.src,
+                alt: img.alt || ''
+            });
+            setLightboxOpen(true);
+        }
+    };
+
+    // 点击大纲项滚动到对应位置
+    const handleTocClick = (e, id) => {
+        e.preventDefault();
+        const element = document.getElementById(id);
+        if (element) {
+            const offset = 80;
+            const top = element.getBoundingClientRect().top + window.pageYOffset - offset;
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
+    };
 
     return (
         <div className="manual-container">
@@ -613,12 +1003,12 @@ export default function ManualPage() {
 
             {/* 主内容区 */}
             <main className="manual-main">
-                <div className="manual-content">
+                <div className="manual-content" onClick={handleContentClick}>
                     {section === '' ? (
                         <div dangerouslySetInnerHTML={{ __html: content.content }} />
                     ) : (
                         <>
-                            <div dangerouslySetInnerHTML={{ __html: content.content }} />
+                            <ContentRenderer content={processedContent} onImageClick={handleImageClick} />
                             
                             {/* 导航按钮 */}
                             <div className="manual-nav-buttons">
@@ -643,6 +1033,33 @@ export default function ManualPage() {
                     )}
                 </div>
             </main>
+            
+            {/* 右侧大纲目录 */}
+            {section && outline.length > 0 && (
+                <aside className="manual-toc">
+                    <div className="manual-toc-title">📋 本页目录</div>
+                    <ul className="manual-toc-list">
+                        {outline.map((item, index) => (
+                            <li key={index} className="manual-toc-item">
+                                <a
+                                    href={`#${item.id}`}
+                                    className={`manual-toc-link level-${item.level} ${activeHeading === item.id ? 'active' : ''}`}
+                                    onClick={(e) => handleTocClick(e, item.id)}
+                                >
+                                    {item.text}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </aside>
+            )}
+            
+            {/* 图片灯箱 */}
+            <ImageLightbox
+                isOpen={lightboxOpen}
+                image={currentImage}
+                onClose={() => setLightboxOpen(false)}
+            />
         </div>
     );
 }

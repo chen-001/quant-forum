@@ -213,6 +213,27 @@ export default function TableEditor({
             {/* 表格 */}
             <div className="table-wrapper" ref={tableRef}>
                 <table className="editable-table">
+                    {/* 表头：列删除按钮 */}
+                    {!readOnly && (
+                        <thead>
+                            <tr className="table-header-row">
+                                <th className="table-row-actions-header"></th>
+                                {tableData[0]?.map((_, colIndex) => (
+                                    <th key={colIndex} className="table-col-header" style={{ width: columnWidths[colIndex] }}>
+                                        <button
+                                            type="button"
+                                            className="table-action-btn delete col-delete"
+                                            onClick={() => deleteColumn(colIndex)}
+                                            title="删除列"
+                                        >
+                                            ×
+                                        </button>
+                                    </th>
+                                ))}
+                                <th className="row-resize-header"></th>
+                            </tr>
+                        </thead>
+                    )}
                     <tbody>
                         {tableData.map((row, rowIndex) => (
                             <tr key={rowIndex} style={{ height: rowHeights[rowIndex] }}>
@@ -284,30 +305,6 @@ export default function TableEditor({
                                         )}
                                     </td>
                                 ))}
-
-                                {/* 列删除按钮（只在第一行显示） */}
-                                {!readOnly && rowIndex === 0 && (
-                                    <td className="table-col-actions-cell" rowSpan={tableData.length}>
-                                        <div className="table-col-actions">
-                                            {row.map((_, colIndex) => (
-                                                <button
-                                                    key={colIndex}
-                                                    type="button"
-                                                    className="table-action-btn delete col-delete"
-                                                    onClick={() => deleteColumn(colIndex)}
-                                                    title="删除列"
-                                                    style={{
-                                                        position: 'absolute',
-                                                        left: columnWidths.slice(0, colIndex).reduce((a, b) => a + b, 0) + columnWidths[colIndex] / 2 - 10 + 30,
-                                                        top: -25
-                                                    }}
-                                                >
-                                                    ×
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </td>
-                                )}
 
                                 {/* 行高调整手柄 */}
                                 {!readOnly && (

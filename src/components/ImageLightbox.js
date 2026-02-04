@@ -187,10 +187,13 @@ export default function ImageLightbox({ isOpen, image, postId, onClose, onFavori
             </div>
 
             {imageLoaded && !imageError && (
-                <div className="image-lightbox-controls">
+                <div className="image-lightbox-controls" onClick={(e) => e.stopPropagation()}>
                     <button
                         className="image-lightbox-zoom-btn"
-                        onClick={handleZoomOut}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleZoomOut();
+                        }}
                         aria-label="缩小"
                         disabled={scale <= 0.25}
                     >
@@ -201,7 +204,10 @@ export default function ImageLightbox({ isOpen, image, postId, onClose, onFavori
                     </span>
                     <button
                         className="image-lightbox-zoom-btn"
-                        onClick={handleZoomIn}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleZoomIn();
+                        }}
                         aria-label="放大"
                         disabled={scale >= 4}
                     >
@@ -209,7 +215,10 @@ export default function ImageLightbox({ isOpen, image, postId, onClose, onFavori
                     </button>
                     <button
                         className="image-lightbox-zoom-btn"
-                        onClick={resetZoom}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            resetZoom();
+                        }}
                         aria-label="重置"
                     >
                         ↺

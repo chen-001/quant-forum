@@ -94,6 +94,9 @@ export default function Header() {
                         <Link href="/summaries" className="btn btn-ghost">
                             📑 摘要
                         </Link>
+                        <Link href="/manual" className="btn btn-ghost">
+                            📖 手册
+                        </Link>
                         <ThemeToggle />
                         <div className="user-info">
                             <Link href="/activities" className="btn btn-ghost" onClick={() => {
