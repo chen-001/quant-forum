@@ -48,6 +48,7 @@ export default function PostDetailPage({ params }) {
     const [isResizing, setIsResizing] = useState(false);
     const [leftPanelWidth, setLeftPanelWidth] = useState(5); // 左侧标签面板默认宽度 5vw
     const [isLeftPanelResizing, setIsLeftPanelResizing] = useState(false);
+    const [sidebarTop, setSidebarTop] = useState('5vh'); // 讨论区动态 top 值
     const saveTimeoutRef = useRef(null);
     const sidebarRef = useRef(null);
     const startXRef = useRef(0);
@@ -61,6 +62,31 @@ export default function PostDetailPage({ params }) {
         if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
             setIsElectron(true);
         }
+    }, []);
+
+    // 监听导航栏高度变化，动态计算讨论区的 top 值
+    useEffect(() => {
+        const calculateSidebarTop = () => {
+            const navbar = document.querySelector('.navbar');
+            const electronOffset = window.innerHeight * 0.05; // 5vh in pixels
+            
+            if (!navbar) {
+                setSidebarTop(`${electronOffset}px`);
+                return;
+            }
+            
+            // 获取导航栏实际高度（包含 Electron 偏移）
+            const navbarHeight = navbar.getBoundingClientRect().height;
+            setSidebarTop(`${navbarHeight}px`);
+        };
+
+        // 初始计算
+        calculateSidebarTop();
+        
+        // 监听窗口大小变化（可能影响导航栏高度）
+        window.addEventListener('resize', calculateSidebarTop);
+        
+        return () => window.removeEventListener('resize', calculateSidebarTop);
     }, []);
 
     // 侧边栏拖动调整宽度
@@ -1192,7 +1218,7 @@ export default function PostDetailPage({ params }) {
                     <div
                         ref={sidebarRef}
                         className={`post-sidebar ${isResizing ? 'resizing' : ''}`}
-                        style={{ width: `${sidebarWidth}vw`, paddingRight: 0 }}
+                        style={{ width: `${sidebarWidth}vw`, paddingRight: 0, top: sidebarTop }}
                     >
                         {/* 拖动调整宽度的手柄 */}
                         <div
