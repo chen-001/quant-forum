@@ -1,8 +1,8 @@
 /* 用户手册样式 */
 .manual-layout {
     min-height: 100vh;
-    background: var(--bg-primary, #0a0a0f);
-    color: var(--text-primary, #e8e8e8);
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .manual-container {
@@ -15,8 +15,8 @@
 /* 侧边栏 */
 .manual-sidebar {
     width: 280px;
-    background: var(--bg-secondary, #111118);
-    border-right: 1px solid var(--border-color, #2a2a35);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
     padding: 24px 0;
     position: fixed;
     height: 100vh;
@@ -26,14 +26,14 @@
 
 .manual-sidebar-header {
     padding: 0 20px 20px;
-    border-bottom: 1px solid var(--border-color, #2a2a35);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 20px;
 }
 
 .manual-sidebar-title {
     font-size: 20px;
     font-weight: 700;
-    color: var(--primary, #6366f1);
+    color: var(--primary);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -41,12 +41,12 @@
 }
 
 .manual-sidebar-title:hover {
-    color: var(--primary-light, #818cf8);
+    color: var(--primary-hover);
 }
 
 .manual-sidebar-subtitle {
     font-size: 13px;
-    color: var(--text-muted, #6b7280);
+    color: var(--text-muted);
     margin-top: 4px;
 }
 
@@ -66,19 +66,19 @@
     padding: 10px 12px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--text-secondary);
     cursor: pointer;
     border-radius: 8px;
     transition: all 0.2s;
 }
 
 .manual-nav-header:hover {
-    background: var(--bg-tertiary, #1a1a25);
-    color: var(--text-primary, #e8e8e8);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 .manual-nav-header.active {
-    background: var(--primary, #6366f1);
+    background: var(--primary);
     color: white;
 }
 
@@ -109,7 +109,7 @@
     display: block;
     padding: 8px 12px;
     font-size: 13px;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--text-secondary);
     text-decoration: none;
     border-radius: 6px;
     transition: all 0.2s;
@@ -117,13 +117,13 @@
 }
 
 .manual-nav-item:hover {
-    background: var(--bg-tertiary, #1a1a25);
-    color: var(--text-primary, #e8e8e8);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 .manual-nav-item.active {
-    background: var(--primary-light, rgba(99, 102, 241, 0.15));
-    color: var(--primary, #6366f1);
+    background: var(--primary-light);
+    color: var(--primary);
     font-weight: 500;
 }
 
@@ -133,6 +133,7 @@
     margin-left: 280px;
     padding: 40px 60px;
     max-width: 900px;
+    min-height: 100vh;
 }
 
 .manual-content {
@@ -144,7 +145,7 @@
     font-weight: 700;
     margin-bottom: 24px;
     padding-bottom: 16px;
-    border-bottom: 2px solid var(--primary, #6366f1);
+    border-bottom: 2px solid var(--primary);
 }
 
 .manual-content h2 {
@@ -152,14 +153,14 @@
     font-weight: 600;
     margin: 48px 0 24px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-color, #2a2a35);
+    border-bottom: 1px solid var(--border);
 }
 
 .manual-content h3 {
     font-size: 22px;
     font-weight: 600;
     margin: 32px 0 16px;
-    color: var(--primary, #6366f1);
+    color: var(--primary);
 }
 
 .manual-content h4 {
@@ -186,7 +187,7 @@
 }
 
 .manual-content a {
-    color: var(--primary, #6366f1);
+    color: var(--primary);
     text-decoration: none;
 }
 
@@ -195,16 +196,16 @@
 }
 
 .manual-content code {
-    background: var(--bg-tertiary, #1a1a25);
+    background: var(--bg-tertiary);
     padding: 2px 8px;
     border-radius: 4px;
     font-family: 'Monaco', 'Consolas', monospace;
     font-size: 14px;
-    color: var(--primary-light, #818cf8);
+    color: var(--primary);
 }
 
 .manual-content pre {
-    background: var(--bg-tertiary, #1a1a25);
+    background: var(--bg-tertiary);
     padding: 16px;
     border-radius: 8px;
     overflow-x: auto;
@@ -217,17 +218,17 @@
 }
 
 .manual-content blockquote {
-    border-left: 4px solid var(--primary, #6366f1);
+    border-left: 4px solid var(--primary);
     padding-left: 16px;
     margin: 16px 0;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--text-secondary);
     font-style: italic;
 }
 
 .manual-content img {
     max-width: 100%;
     border-radius: 8px;
-    border: 1px solid var(--border-color, #2a2a35);
+    border: 1px solid var(--border);
     margin: 16px 0;
 }
 
@@ -241,18 +242,18 @@
 .manual-content td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color, #2a2a35);
+    border-bottom: 1px solid var(--border);
 }
 
 .manual-content th {
-    background: var(--bg-tertiary, #1a1a25);
+    background: var(--bg-tertiary);
     font-weight: 600;
 }
 
 /* 提示框 */
 .manual-tip {
-    background: rgba(99, 102, 241, 0.1);
-    border-left: 4px solid var(--primary, #6366f1);
+    background: var(--primary-light);
+    border-left: 4px solid var(--primary);
     padding: 16px 20px;
     border-radius: 0 8px 8px 0;
     margin: 20px 0;
@@ -260,7 +261,7 @@
 
 .manual-tip-title {
     font-weight: 600;
-    color: var(--primary, #6366f1);
+    color: var(--primary);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -305,7 +306,7 @@
     top: 0;
     width: 32px;
     height: 32px;
-    background: var(--primary, #6366f1);
+    background: var(--primary);
     color: white;
     border-radius: 50%;
     display: flex;
@@ -317,8 +318,8 @@
 
 /* 截图占位符 */
 .manual-screenshot-placeholder {
-    background: var(--bg-tertiary, #1a1a25);
-    border: 2px dashed var(--border-color, #2a2a35);
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border);
     border-radius: 12px;
     padding: 60px 40px;
     text-align: center;
@@ -332,13 +333,13 @@
 }
 
 .manual-screenshot-placeholder-text {
-    color: var(--text-muted, #6b7280);
+    color: var(--text-muted);
     font-size: 14px;
 }
 
 .manual-screenshot-placeholder-filename {
     font-family: monospace;
-    background: var(--bg-secondary, #111118);
+    background: var(--bg-secondary);
     padding: 4px 12px;
     border-radius: 4px;
     margin-top: 12px;
@@ -352,7 +353,7 @@
     justify-content: space-between;
     margin-top: 60px;
     padding-top: 24px;
-    border-top: 1px solid var(--border-color, #2a2a35);
+    border-top: 1px solid var(--border);
 }
 
 .manual-nav-button {
@@ -360,18 +361,18 @@
     align-items: center;
     gap: 12px;
     padding: 16px 24px;
-    background: var(--bg-secondary, #111118);
-    border: 1px solid var(--border-color, #2a2a35);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    color: var(--text-primary, #e8e8e8);
+    color: var(--text-primary);
     text-decoration: none;
     transition: all 0.2s;
     max-width: 280px;
 }
 
 .manual-nav-button:hover {
-    background: var(--bg-tertiary, #1a1a25);
-    border-color: var(--primary, #6366f1);
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
 }
 
 .manual-nav-button.next {
@@ -381,7 +382,7 @@
 
 .manual-nav-button-label {
     font-size: 12px;
-    color: var(--text-muted, #6b7280);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -410,7 +411,7 @@
 
 .manual-home-description {
     font-size: 18px;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--text-secondary);
     max-width: 600px;
     margin: 0 auto 48px;
 }
@@ -424,8 +425,8 @@
 }
 
 .manual-home-card {
-    background: var(--bg-secondary, #111118);
-    border: 1px solid var(--border-color, #2a2a35);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 28px;
     transition: all 0.2s;
@@ -434,9 +435,9 @@
 }
 
 .manual-home-card:hover {
-    border-color: var(--primary, #6366f1);
+    border-color: var(--primary);
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+    box-shadow: var(--shadow-lg);
 }
 
 .manual-home-card-icon {
@@ -447,13 +448,13 @@
 .manual-home-card h3 {
     margin: 0 0 8px;
     font-size: 20px;
-    color: var(--text-primary, #e8e8e8);
+    color: var(--text-primary);
 }
 
 .manual-home-card p {
     margin: 0;
     font-size: 14px;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--text-secondary);
 }
 
 /* 响应式 */
@@ -477,7 +478,7 @@
         top: 20px;
         left: 20px;
         z-index: 101;
-        background: var(--primary, #6366f1);
+        background: var(--primary);
         color: white;
         border: none;
         padding: 12px;
