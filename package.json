@@ -64,11 +64,9 @@
       ]
     },
     "linux": {
-      "icon": "electron/icons/icon.ico",
+      "icon": "electron/icons/icon.png",
       "target": [
         "AppImage",
-        "deb",
-        "rpm",
         "tar.gz"
       ],
       "category": "Office"
