@@ -70,7 +70,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">quickstart/register.png</div>
+    <div class="manual-screenshot-placeholder-filename">quickstart_register.png</div>
 </div>
 
 <div class="manual-tip">
@@ -90,7 +90,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">quickstart/homepage.png</div>
+    <div class="manual-screenshot-placeholder-filename">quickstart_homepage.png</div>
 </div>
 
 <h3>3. 主题切换</h3>
@@ -99,7 +99,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">quickstart/theme-toggle.png</div>
+    <div class="manual-screenshot-placeholder-filename">quickstart_theme_toggle.png</div>
 </div>
 
 <h3>4. 发布第一个帖子</h3>
@@ -112,7 +112,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">creator/post-type-select.png</div>
+    <div class="manual-screenshot-placeholder-filename">creator_post_type_select.png</div>
 </div>
 
 <div class="manual-tip">
@@ -162,7 +162,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">creator/new-link-post.png</div>
+    <div class="manual-screenshot-placeholder-filename">creator_new_link_post.png</div>
 </div>
 
 <h3>链接预览功能</h3>
@@ -176,7 +176,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">creator/link-preview.png</div>
+    <div class="manual-screenshot-placeholder-filename">creator_link_preview.png</div>
 </div>
 
 <h3>创建表格帖子</h3>
@@ -192,7 +192,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">creator/table-edit.png</div>
+    <div class="manual-screenshot-placeholder-filename">creator_table_edit.png</div>
 </div>
 
 <h3>帖子管理</h3>
@@ -206,7 +206,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">creator/edit-post.png</div>
+    <div class="manual-screenshot-placeholder-filename">creator_edit_post.png</div>
 </div>
 
 <div class="manual-warning">
@@ -235,7 +235,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/comment-area.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_comment_area.png</div>
 </div>
 
 <h3>发表评论</h3>
@@ -250,7 +250,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/write-comment.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_write_comment.png</div>
 </div>
 
 <h3>回复评论</h3>
@@ -259,7 +259,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/reply-comment.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_reply_comment.png</div>
 </div>
 
 <h3>评论互动</h3>
@@ -274,7 +274,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/comment-actions.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_comment_actions.png</div>
 </div>
 
 <h3>修改评论标签</h3>
@@ -283,7 +283,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/change-category.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_change_category.png</div>
 </div>
 
 <h3>行内评论</h3>
@@ -292,7 +292,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">discuss/line-comment.png</div>
+    <div class="manual-screenshot-placeholder-filename">discuss_line_comment.png</div>
 </div>
         `
     },
@@ -315,7 +315,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">advanced/results-section.png</div>
+    <div class="manual-screenshot-placeholder-filename">advanced_results_section.png</div>
 </div>
 
 <h3>想法协作区</h3>
@@ -329,7 +329,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">advanced/ideas-section.png</div>
+    <div class="manual-screenshot-placeholder-filename">advanced_ideas_section.png</div>
 </div>
 
 <h3>评分系统</h3>
@@ -364,7 +364,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">advanced/rating-panel.png</div>
+    <div class="manual-screenshot-placeholder-filename">advanced_rating_panel.png</div>
 </div>
 
 <h3>右键快捷操作</h3>
@@ -378,7 +378,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">advanced/context-menu.png</div>
+    <div class="manual-screenshot-placeholder-filename">advanced_context_menu.png</div>
 </div>
         `
     },
@@ -401,13 +401,13 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/chat-button.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_chat_button.png</div>
 </div>
 
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/chat-window.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_chat_window.png</div>
 </div>
 
 <h3>因子探索工具</h3>
@@ -419,7 +419,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/explore-button.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_button.png</div>
 </div>
 
 <h4>探索面板布局</h4>
@@ -435,7 +435,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/explore-modal-overview.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_modal_overview.png</div>
 </div>
 
 <h4>生成与执行流程</h4>
@@ -451,7 +451,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/explore-execute.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_execute.png</div>
 </div>
 
 <h4>版本历史</h4>
@@ -460,7 +460,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/explore-timeline.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_explore_timeline.png</div>
 </div>
 
 <h3>智能摘要管理</h3>
@@ -469,7 +469,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">ai/summaries-page.png</div>
+    <div class="manual-screenshot-placeholder-filename">ai_summaries_page.png</div>
 </div>
 
 <div class="manual-tip">
@@ -498,7 +498,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">personal/favorites-page.png</div>
+    <div class="manual-screenshot-placeholder-filename">personal_favorites_page.png</div>
 </div>
 
 <h3>待办事项</h3>
@@ -522,7 +522,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">personal/todos-page.png</div>
+    <div class="manual-screenshot-placeholder-filename">personal_todos_page.png</div>
 </div>
 
 <h4>待办流转</h4>
@@ -531,7 +531,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">personal/todo-transfer.png</div>
+    <div class="manual-screenshot-placeholder-filename">personal_todo_transfer.png</div>
 </div>
 
 <h3>动态追踪</h3>
@@ -546,7 +546,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">personal/activities-page.png</div>
+    <div class="manual-screenshot-placeholder-filename">personal_activities_page.png</div>
 </div>
 
 <h3>收藏/待办指示器</h3>
@@ -555,7 +555,7 @@ const manualContent = {
 <div class="manual-screenshot-placeholder">
     <div class="manual-screenshot-placeholder-icon">🖼️</div>
     <div class="manual-screenshot-placeholder-text">截图待添加</div>
-    <div class="manual-screenshot-placeholder-filename">system/favorite-todo-indicator.png</div>
+    <div class="manual-screenshot-placeholder-filename">system_favorite_todo_indicator.png</div>
 </div>
 
 <div class="manual-tip">
