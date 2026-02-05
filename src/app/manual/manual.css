@@ -84,6 +84,24 @@
     font-size: 16px;
 }
 
+/* 返回首页按钮特殊样式 */
+.manual-nav-header.back-to-home {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.manual-nav-header.back-to-home:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.manual-nav-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+}
+
 .manual-nav-arrow {
     margin-left: auto;
     font-size: 12px;
