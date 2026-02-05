@@ -3,11 +3,12 @@ import ElectronDragRegion from '@/components/ElectronDragRegion';
 
 // 服务端启动定时任务调度器
 if (typeof window === 'undefined') {
-  const schedulerGlobal = globalThis.__scheduler__;
-  if (!schedulerGlobal?.started) {
+  // 使用 process.env 作为进程级别的标志，确保只在应用启动时初始化一次
+  // 这在开发模式（HMR重载）和生产模式下都能正确工作
+  if (!process.env.__SCHEDULER_INITIALIZED__) {
+    process.env.__SCHEDULER_INITIALIZED__ = 'true';
     import('@/lib/scheduler.js').then(({ startScheduler }) => {
       startScheduler();
-      globalThis.__scheduler__ = { started: true };
     });
   }
 }

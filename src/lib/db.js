@@ -23,6 +23,7 @@ export function getDb() {
         ensureActivityViewsSchema(db);
         ensureCommentExplorationsSchema(db);
         ensureCodeVersionsSchema(db);
+        ensureZonesSchema(db);
 
         // 启动OCR队列处理
         startOCRQueue();
@@ -281,6 +282,90 @@ function ensureCodeVersionsSchema(database) {
         database.prepare('CREATE INDEX IF NOT EXISTS idx_code_versions_created_at ON code_versions(created_at)').run();
     } catch (error) {
         console.error('ensureCodeVersionsSchema failed:', error);
+    }
+}
+
+// 专区相关表初始化
+function ensureZonesSchema(database) {
+    try {
+        // 专区表
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS zones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                cover_image TEXT,
+                created_by INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                is_public INTEGER DEFAULT 1,
+                sort_order INTEGER DEFAULT 0,
+                FOREIGN KEY (created_by) REFERENCES users(id)
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zones_created_by ON zones(created_by)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zones_sort_order ON zones(sort_order)').run();
+
+        // 专区页面表
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS zone_pages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                zone_id INTEGER NOT NULL,
+                parent_id INTEGER,
+                title TEXT NOT NULL,
+                content TEXT,
+                path TEXT NOT NULL,
+                level INTEGER DEFAULT 0,
+                sort_order INTEGER DEFAULT 0,
+                created_by INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE,
+                FOREIGN KEY (parent_id) REFERENCES zone_pages(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES users(id)
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_pages_zone_id ON zone_pages(zone_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_pages_parent_id ON zone_pages(parent_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_pages_path ON zone_pages(path)').run();
+
+        // 专区页面讨论区表（类似于post_ideas）
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS zone_page_discussions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                page_id INTEGER NOT NULL,
+                parent_id INTEGER,
+                content TEXT NOT NULL,
+                author_id INTEGER NOT NULL,
+                likes_count INTEGER DEFAULT 0,
+                doubts_count INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (page_id) REFERENCES zone_pages(id) ON DELETE CASCADE,
+                FOREIGN KEY (parent_id) REFERENCES zone_page_discussions(id) ON DELETE CASCADE,
+                FOREIGN KEY (author_id) REFERENCES users(id)
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_page_discussions_page_id ON zone_page_discussions(page_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_page_discussions_parent_id ON zone_page_discussions(parent_id)').run();
+
+        // 讨论区点赞/质疑表
+        database.prepare(`
+            CREATE TABLE IF NOT EXISTS zone_page_discussion_reactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                discussion_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                reaction_type TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(discussion_id, user_id, reaction_type),
+                FOREIGN KEY (discussion_id) REFERENCES zone_page_discussions(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `).run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_discussion_reactions_discussion ON zone_page_discussion_reactions(discussion_id)').run();
+        database.prepare('CREATE INDEX IF NOT EXISTS idx_zone_discussion_reactions_user ON zone_page_discussion_reactions(user_id)').run();
+    } catch (error) {
+        console.error('ensureZonesSchema failed:', error);
     }
 }
 
@@ -1914,5 +1999,368 @@ export const codeVersionQueries = {
             LIMIT 1
         `);
         return stmt.get(commentId, variantIndex);
+    }
+};
+
+
+// 专区相关操作
+export const zoneQueries = {
+    // 创建专区
+    create: (name, description, coverImage, createdBy, isPublic = 1) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO zones (name, description, cover_image, created_by, is_public)
+            VALUES (?, ?, ?, ?, ?)
+        `);
+        return stmt.run(name, description, coverImage, createdBy, isPublic);
+    },
+
+    // 获取所有专区
+    list: (limit = 50, offset = 0) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT z.*, u.username as created_by_name,
+                (SELECT COUNT(*) FROM zone_pages WHERE zone_id = z.id) as page_count
+            FROM zones z
+            JOIN users u ON z.created_by = u.id
+            ORDER BY z.sort_order ASC, z.created_at DESC
+            LIMIT ? OFFSET ?
+        `);
+        return stmt.all(limit, offset);
+    },
+
+    // 搜索专区
+    search: (keyword, limit = 20) => {
+        const db = getDb();
+        const pattern = `%${keyword}%`;
+        const stmt = db.prepare(`
+            SELECT z.*, u.username as created_by_name,
+                (SELECT COUNT(*) FROM zone_pages WHERE zone_id = z.id) as page_count
+            FROM zones z
+            JOIN users u ON z.created_by = u.id
+            WHERE z.name LIKE ? OR z.description LIKE ?
+            ORDER BY z.created_at DESC
+            LIMIT ?
+        `);
+        return stmt.all(pattern, pattern, limit);
+    },
+
+    // 获取专区详情
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT z.*, u.username as created_by_name
+            FROM zones z
+            JOIN users u ON z.created_by = u.id
+            WHERE z.id = ?
+        `);
+        return stmt.get(id);
+    },
+
+    // 更新专区
+    update: (id, { name, description, coverImage, isPublic, sortOrder }) => {
+        const db = getDb();
+        const updates = [];
+        const params = [];
+        
+        if (name !== undefined) { updates.push('name = ?'); params.push(name); }
+        if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+        if (coverImage !== undefined) { updates.push('cover_image = ?'); params.push(coverImage); }
+        if (isPublic !== undefined) { updates.push('is_public = ?'); params.push(isPublic); }
+        if (sortOrder !== undefined) { updates.push('sort_order = ?'); params.push(sortOrder); }
+        
+        if (updates.length === 0) return null;
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(id);
+        
+        const stmt = db.prepare(`
+            UPDATE zones SET ${updates.join(', ')} WHERE id = ?
+        `);
+        return stmt.run(...params);
+    },
+
+    // 删除专区
+    delete: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM zones WHERE id = ?');
+        return stmt.run(id);
+    }
+};
+
+// 专区页面相关操作
+export const zonePageQueries = {
+    // 创建页面
+    create: (zoneId, parentId, title, content, path, level, createdBy) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO zone_pages (zone_id, parent_id, title, content, path, level, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(zoneId, parentId, title, content, path, level, createdBy);
+    },
+
+    // 获取专区的所有页面（扁平列表）
+    findByZoneId: (zoneId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            WHERE p.zone_id = ?
+            ORDER BY p.sort_order ASC, p.created_at ASC
+        `);
+        return stmt.all(zoneId);
+    },
+
+    // 获取页面树（递归结构）
+    getTree: (zoneId) => {
+        const db = getDb();
+        const pages = db.prepare(`
+            SELECT p.*, u.username as created_by_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            WHERE p.zone_id = ?
+            ORDER BY p.sort_order ASC, p.created_at ASC
+        `).all(zoneId);
+        
+        // 构建树形结构
+        const map = {};
+        const roots = [];
+        
+        pages.forEach(p => {
+            map[p.id] = { ...p, children: [] };
+        });
+        
+        pages.forEach(p => {
+            if (p.parent_id && map[p.parent_id]) {
+                map[p.parent_id].children.push(map[p.id]);
+            } else {
+                roots.push(map[p.id]);
+            }
+        });
+        
+        return roots;
+    },
+
+    // 获取页面详情
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name, z.name as zone_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            JOIN zones z ON p.zone_id = z.id
+            WHERE p.id = ?
+        `);
+        return stmt.get(id);
+    },
+
+    // 根据路径获取页面
+    findByPath: (zoneId, path) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            WHERE p.zone_id = ? AND p.path = ?
+        `);
+        return stmt.get(zoneId, path);
+    },
+
+    // 更新页面
+    update: (id, { title, content }) => {
+        const db = getDb();
+        const updates = [];
+        const params = [];
+        
+        if (title !== undefined) { updates.push('title = ?'); params.push(title); }
+        if (content !== undefined) { updates.push('content = ?'); params.push(content); }
+        
+        if (updates.length === 0) return null;
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(id);
+        
+        const stmt = db.prepare(`
+            UPDATE zone_pages SET ${updates.join(', ')} WHERE id = ?
+        `);
+        return stmt.run(...params);
+    },
+
+    // 更新页面路径
+    updatePath: (id, path) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE zone_pages SET path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `);
+        return stmt.run(path, id);
+    },
+
+    // 删除页面
+    delete: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM zone_pages WHERE id = ?');
+        return stmt.run(id);
+    },
+
+    // 获取子页面
+    getChildren: (parentId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            WHERE p.parent_id = ?
+            ORDER BY p.sort_order ASC, p.created_at ASC
+        `);
+        return stmt.all(parentId);
+    },
+
+    // 获取页面深度
+    getDepth: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('SELECT level FROM zone_pages WHERE id = ?');
+        const row = stmt.get(id);
+        return row ? row.level : 0;
+    }
+};
+
+// 专区页面讨论区相关操作
+export const zonePageDiscussionQueries = {
+    // 创建讨论
+    create: (pageId, parentId, content, authorId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            INSERT INTO zone_page_discussions (page_id, parent_id, content, author_id)
+            VALUES (?, ?, ?, ?)
+        `);
+        return stmt.run(pageId, parentId, content, authorId);
+    },
+
+    // 获取页面的所有讨论
+    findByPageId: (pageId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT d.*, u.username as author_name
+            FROM zone_page_discussions d
+            JOIN users u ON d.author_id = u.id
+            WHERE d.page_id = ?
+            ORDER BY d.created_at ASC
+        `);
+        return stmt.all(pageId);
+    },
+
+    // 获取讨论详情
+    findById: (id) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT d.*, u.username as author_name
+            FROM zone_page_discussions d
+            JOIN users u ON d.author_id = u.id
+            WHERE d.id = ?
+        `);
+        return stmt.get(id);
+    },
+
+    // 获取讨论树
+    getTree: (pageId) => {
+        const db = getDb();
+        const discussions = db.prepare(`
+            SELECT d.*, u.username as author_name
+            FROM zone_page_discussions d
+            JOIN users u ON d.author_id = u.id
+            WHERE d.page_id = ?
+            ORDER BY d.created_at ASC
+        `).all(pageId);
+        
+        const map = {};
+        const roots = [];
+        
+        discussions.forEach(d => {
+            map[d.id] = { ...d, replies: [] };
+        });
+        
+        discussions.forEach(d => {
+            if (d.parent_id && map[d.parent_id]) {
+                map[d.parent_id].replies.push(map[d.id]);
+            } else {
+                roots.push(map[d.id]);
+            }
+        });
+        
+        return roots;
+    },
+
+    // 更新讨论
+    update: (id, content) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            UPDATE zone_page_discussions 
+            SET content = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `);
+        return stmt.run(content, id);
+    },
+
+    // 删除讨论
+    delete: (id) => {
+        const db = getDb();
+        const stmt = db.prepare('DELETE FROM zone_page_discussions WHERE id = ?');
+        return stmt.run(id);
+    },
+
+    // 添加反应（点赞/质疑）
+    addReaction: (discussionId, userId, reactionType) => {
+        const db = getDb();
+        const insertStmt = db.prepare(`
+            INSERT OR IGNORE INTO zone_page_discussion_reactions (discussion_id, user_id, reaction_type)
+            VALUES (?, ?, ?)
+        `);
+        const result = insertStmt.run(discussionId, userId, reactionType);
+        
+        if (result.changes > 0) {
+            const updateStmt = db.prepare(`
+                UPDATE zone_page_discussions 
+                SET ${reactionType === 'like' ? 'likes_count' : 'doubts_count'} = 
+                    ${reactionType === 'like' ? 'likes_count' : 'doubts_count'} + 1
+                WHERE id = ?
+            `);
+            updateStmt.run(discussionId);
+        }
+        return result;
+    },
+
+    // 移除反应
+    removeReaction: (discussionId, userId, reactionType) => {
+        const db = getDb();
+        const deleteStmt = db.prepare(`
+            DELETE FROM zone_page_discussion_reactions 
+            WHERE discussion_id = ? AND user_id = ? AND reaction_type = ?
+        `);
+        const result = deleteStmt.run(discussionId, userId, reactionType);
+        
+        if (result.changes > 0) {
+            const updateStmt = db.prepare(`
+                UPDATE zone_page_discussions 
+                SET ${reactionType === 'like' ? 'likes_count' : 'doubts_count'} = 
+                    MAX(0, ${reactionType === 'like' ? 'likes_count' : 'doubts_count'} - 1)
+                WHERE id = ?
+            `);
+            updateStmt.run(discussionId);
+        }
+        return result;
+    },
+
+    // 获取用户的反应
+    getUserReactions: (pageId, userId) => {
+        const db = getDb();
+        const stmt = db.prepare(`
+            SELECT r.discussion_id, r.reaction_type
+            FROM zone_page_discussion_reactions r
+            JOIN zone_page_discussions d ON r.discussion_id = d.id
+            WHERE d.page_id = ? AND r.user_id = ?
+        `);
+        return stmt.all(pageId, userId);
     }
 };
