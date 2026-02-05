@@ -885,6 +885,20 @@ const manualContent = {
     </li>
 </ul>
 
+<h3>2026.02.05 - 专区功能</h3>
+<p><strong>新增功能：</strong></p>
+<ul>
+    <li>专区系统：可自行开设专区（如：t0专区、order专区），用于分类管理相关主题</li>
+    <li>文档管理：
+        <ul>
+            <li>专区中可创建文档，支持无限层级子文档结构</li>
+            <li>文档支持Markdown编辑和实时预览（左右分栏）</li>
+            <li>支持上传图片和粘贴图片到文档</li>
+        </ul>
+    </li>
+    <li>独立讨论区：每个文档拥有独立的讨论区，方便针对具体内容进行讨论</li>
+</ul>
+
 <div class="manual-tip">
     <div class="manual-tip-title">🎉 感谢使用</div>
     <p>感谢您使用量化因子交流论坛！我们会持续优化产品体验，如有建议欢迎反馈。</p>
