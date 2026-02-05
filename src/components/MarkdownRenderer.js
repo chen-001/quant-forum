@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, memo, forwardRef, useImperativeHandle } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import katex from 'katex';
@@ -152,9 +152,28 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ content, postId, onFav
 export default MarkdownRenderer;
 
 // Markdown 编辑器组件
-export const MarkdownEditor = memo(function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }) {
+export const MarkdownEditor = memo(forwardRef(function MarkdownEditor({ value, onChange, placeholder, minHeight = 120 }, ref) {
     const textareaRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+
+    // 暴露 textarea 的引用给父组件
+    useImperativeHandle(ref, () => ({
+        get textarea() {
+            return textareaRef.current;
+        },
+        focus() {
+            textareaRef.current?.focus();
+        },
+        get selectionStart() {
+            return textareaRef.current?.selectionStart || 0;
+        },
+        get selectionEnd() {
+            return textareaRef.current?.selectionEnd || 0;
+        },
+        setSelectionRange(start, end) {
+            textareaRef.current?.setSelectionRange(start, end);
+        }
+    }));
 
     const handlePaste = useCallback(async (e) => {
         const items = e.clipboardData?.items;
@@ -235,4 +254,4 @@ export const MarkdownEditor = memo(function MarkdownEditor({ value, onChange, pl
             </div>
         </div>
     );
-});
+}));

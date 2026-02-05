@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import ZoneList from '@/components/zones/ZoneList';
 import ZonePageTree from '@/components/zones/ZonePageTree';
-import ZonePageContent from '@/components/zones/ZonePageContent';
+import ZoneSplitEditor from '@/components/zones/ZoneSplitEditor';
 import ZoneDiscussion from '@/components/zones/ZoneDiscussion';
 
 export default function ZonePageDetail({ params }) {
@@ -186,7 +186,7 @@ export default function ZonePageDetail({ params }) {
 
                     {/* 中间：页面内容 */}
                     <div className="zone-content-panel">
-                        <ZonePageContent
+                        <ZoneSplitEditor
                             page={currentPage}
                             user={user}
                             onUpdate={fetchData}
