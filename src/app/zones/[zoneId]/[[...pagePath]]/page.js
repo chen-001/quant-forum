@@ -7,6 +7,7 @@ import ZoneList from '@/components/zones/ZoneList';
 import ZonePageTree from '@/components/zones/ZonePageTree';
 import ZoneSplitEditor from '@/components/zones/ZoneSplitEditor';
 import ZoneDiscussion from '@/components/zones/ZoneDiscussion';
+import ZoneSearch from '@/components/zones/ZoneSearch';
 
 export default function ZonePageDetail({ params }) {
     const { zoneId, pagePath } = use(params);
@@ -163,6 +164,11 @@ export default function ZonePageDetail({ params }) {
             <div className="zone-layout">
                 {/* 顶部专区Tab导航 */}
                 <ZoneList activeZoneId={parseInt(zoneId)} />
+                
+                {/* 搜索栏 */}
+                <div className="zone-search-bar">
+                    <ZoneSearch zoneId={parseInt(zoneId)} zoneName={zone?.name} />
+                </div>
 
                 {/* 三栏布局 */}
                 <div className="zone-three-column-layout">

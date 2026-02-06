@@ -13,6 +13,15 @@ export default function ZoneDiscussion({ pageId, user }) {
     const [editContent, setEditContent] = useState('');
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
+    const [sortBy, setSortBy] = useState('default');
+    const [showSortMenu, setShowSortMenu] = useState(false);
+
+    const sortOptions = [
+        { value: 'default', label: '默认顺序', icon: '📋' },
+        { value: 'latestReply', label: '最新回复', icon: '💬' },
+        { value: 'latestActivity', label: '最新动态', icon: '🔥' },
+        { value: 'hasReply', label: '有回复优先', icon: '📢' },
+    ];
 
     const fetchDiscussions = useCallback(async () => {
         if (!pageId) return;
@@ -149,7 +158,84 @@ export default function ZoneDiscussion({ pageId, user }) {
             .filter(item => matches(item) || item.replies.length > 0);
     };
 
-    const filteredDiscussions = filterDiscussions(discussions);
+    // 排序讨论
+    const sortDiscussions = (items) => {
+        if (sortBy === 'default') {
+            return items;
+        }
+
+        const getLatestReplyTime = (item) => {
+            if (!item.replies || item.replies.length === 0) return null;
+            return item.replies.reduce((latest, reply) => {
+                const replyTime = new Date(reply.created_at).getTime();
+                return Math.max(latest, replyTime);
+            }, new Date(item.replies[0]?.created_at).getTime());
+        };
+
+        const getLatestActivityTime = (item) => {
+            const times = [new Date(item.created_at).getTime()];
+            
+            // 回复时间
+            if (item.replies && item.replies.length > 0) {
+                item.replies.forEach(reply => {
+                    times.push(new Date(reply.created_at).getTime());
+                });
+            }
+            
+            // 点赞/质疑时间（通过 updated_at 近似）
+            if (item.updated_at && item.updated_at !== item.created_at) {
+                times.push(new Date(item.updated_at).getTime());
+            }
+            
+            return Math.max(...times);
+        };
+
+        const sorted = [...items].map(item => ({
+            ...item,
+            replies: sortBy === 'latestReply' || sortBy === 'hasReply' 
+                ? item.replies // 保持回复原有顺序
+                : sortDiscussions(item.replies || [])
+        }));
+
+        if (sortBy === 'latestReply') {
+            // 按最新回复时间排序
+            sorted.sort((a, b) => {
+                const aTime = getLatestReplyTime(a) || new Date(a.created_at).getTime();
+                const bTime = getLatestReplyTime(b) || new Date(b.created_at).getTime();
+                return bTime - aTime;
+            });
+        } else if (sortBy === 'latestActivity') {
+            // 按最新活动时间排序
+            sorted.sort((a, b) => {
+                const aTime = getLatestActivityTime(a);
+                const bTime = getLatestActivityTime(b);
+                return bTime - aTime;
+            });
+        } else if (sortBy === 'hasReply') {
+            // 按是否有回复排序，有回复的在前（按回复时间排序），无回复的按发表时间排序
+            sorted.sort((a, b) => {
+                const aHasReply = a.replies && a.replies.length > 0;
+                const bHasReply = b.replies && b.replies.length > 0;
+                
+                if (aHasReply && !bHasReply) return -1;
+                if (!aHasReply && bHasReply) return 1;
+                
+                if (aHasReply && bHasReply) {
+                    // 都有回复，按最新回复时间排序
+                    const aReplyTime = getLatestReplyTime(a);
+                    const bReplyTime = getLatestReplyTime(b);
+                    return bReplyTime - aReplyTime;
+                } else {
+                    // 都没有回复，按发表时间排序
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                }
+            });
+        }
+
+        return sorted;
+    };
+
+    const sortedDiscussions = sortDiscussions(filterDiscussions(discussions));
 
     const renderDiscussion = (item, depth = 0) => (
         <div key={item.id} className={`zone-discussion-item ${depth > 0 ? 'reply' : ''}`}>
@@ -262,23 +348,53 @@ export default function ZoneDiscussion({ pageId, user }) {
         <div className="zone-discussion">
             <div className="zone-discussion-header">
                 <h3>💬 想法讨论区</h3>
-                <div className="zone-discussion-filter">
-                    <input
-                        type="text"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                        placeholder="筛选评论..."
-                    />
+                <div className="zone-discussion-toolbar">
+                    {/* 排序选择器 */}
+                    <div className="zone-discussion-sort">
+                        <button
+                            className="zone-discussion-sort-btn"
+                            onClick={() => setShowSortMenu(!showSortMenu)}
+                        >
+                            <span className="sort-icon">{sortOptions.find(o => o.value === sortBy)?.icon || '📋'}</span>
+                            <span className="sort-label">{sortOptions.find(o => o.value === sortBy)?.label || '默认顺序'}</span>
+                            <span className="sort-arrow">{showSortMenu ? '▲' : '▼'}</span>
+                        </button>
+                        
+                        {showSortMenu && (
+                            <div className="zone-discussion-sort-menu">
+                                {sortOptions.map(option => (
+                                    <button
+                                        key={option.value}
+                                        className={`zone-discussion-sort-item ${sortBy === option.value ? 'active' : ''}`}
+                                        onClick={() => { setSortBy(option.value); setShowSortMenu(false); }}
+                                    >
+                                        <span className="sort-item-icon">{option.icon}</span>
+                                        <span className="sort-item-label">{option.label}</span>
+                                        {sortBy === option.value && <span className="sort-item-check">✓</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {/* 筛选输入框 */}
+                    <div className="zone-discussion-filter">
+                        <input
+                            type="text"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            placeholder="筛选评论..."
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="zone-discussion-list">
-                {filteredDiscussions.length === 0 ? (
+                {sortedDiscussions.length === 0 ? (
                     <div className="zone-discussion-empty">
                         {filter ? '没有找到匹配的评论' : '暂无评论，来发表第一个想法吧！'}
                     </div>
                 ) : (
-                    filteredDiscussions.map(item => renderDiscussion(item))
+                    sortedDiscussions.map(item => renderDiscussion(item))
                 )}
             </div>
 

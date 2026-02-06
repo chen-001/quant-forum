@@ -1,10 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ExploreModal from './ExploreModal';
 
-export default function ExploreButton({ commentId, commentContent, user }) {
-    const [isOpen, setIsOpen] = useState(false);
+export default function ExploreButton({ commentId, commentContent, user, defaultOpen = false, onOpenChange }) {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    // 监听外部 defaultOpen 变化
+    useEffect(() => {
+        if (defaultOpen) {
+            setIsOpen(true);
+        }
+    }, [defaultOpen]);
+
+    // 监听弹窗状态变化，通知父组件
+    useEffect(() => {
+        if (onOpenChange) {
+            onOpenChange(isOpen);
+        }
+    }, [isOpen, onOpenChange]);
 
     if (!user) return null;
 

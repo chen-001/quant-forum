@@ -2223,6 +2223,37 @@ export const zonePageQueries = {
         const stmt = db.prepare('SELECT level FROM zone_pages WHERE id = ?');
         const row = stmt.get(id);
         return row ? row.level : 0;
+    },
+
+    // 递归搜索专区内的所有页面
+    searchInZone: (zoneId, keyword) => {
+        const db = getDb();
+        const pattern = `%${keyword}%`;
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name, z.name as zone_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            JOIN zones z ON p.zone_id = z.id
+            WHERE p.zone_id = ? AND (p.title LIKE ? OR p.content LIKE ?)
+            ORDER BY p.level ASC, p.sort_order ASC, p.created_at ASC
+        `);
+        return stmt.all(zoneId, pattern, pattern);
+    },
+
+    // 跨所有专区搜索页面
+    searchAllPages: (keyword) => {
+        const db = getDb();
+        const pattern = `%${keyword}%`;
+        const stmt = db.prepare(`
+            SELECT p.*, u.username as created_by_name, z.name as zone_name
+            FROM zone_pages p
+            JOIN users u ON p.created_by = u.id
+            JOIN zones z ON p.zone_id = z.id
+            WHERE p.title LIKE ? OR p.content LIKE ?
+            ORDER BY p.updated_at DESC
+            LIMIT 100
+        `);
+        return stmt.all(pattern, pattern);
     }
 };
 

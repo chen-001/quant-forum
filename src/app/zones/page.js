@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import ZoneList from '@/components/zones/ZoneList';
+import ZoneSearch from '@/components/zones/ZoneSearch';
 import Link from 'next/link';
 
 export default function ZonesPage() {
@@ -63,12 +64,16 @@ export default function ZonesPage() {
                     </p>
                 </div>
 
+                <div className="zones-search-section">
+                    <ZoneSearch />
+                </div>
+
                 <div className="zones-search">
                     <input
                         type="text"
                         value={searchKeyword}
                         onChange={(e) => setSearchKeyword(e.target.value)}
-                        placeholder="搜索专区..."
+                        placeholder="搜索专区名称..."
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
                     <button 

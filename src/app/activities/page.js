@@ -213,16 +213,22 @@ const getActivityHref = (activity) => {
     if (activity.category === 'favorites_todos') {
         return activity.action?.startsWith('favorite') ? '/favorites' : '/todos';
     }
-    // 探索相关操作，跳转到帖子详情页并定位到评论
-    if (activity.category === 'exploration' && activity.post_id) {
-        return `/post/${activity.post_id}#comment-${activity.comment_id}`;
+    // 探索相关操作，跳转到帖子详情页并打开探索弹窗
+    if (activity.category === 'exploration' && activity.post_id && activity.comment_id) {
+        return `/post/${activity.post_id}#explore-${activity.comment_id}`;
     }
     if (activity.post_id) {
         let hash = '';
-        if (activity.action?.includes('comment')) hash = '#comments';
-        else if (activity.action?.includes('idea')) hash = '#ideas';
-        else if (activity.action?.includes('result')) hash = '#results';
-        else if (activity.action?.includes('table')) hash = '#table';
+        // 评论类动态，跳转到具体评论位置
+        if (activity.action?.includes('comment') && activity.comment_id) {
+            hash = `#comment-${activity.comment_id}`;
+        } else if (activity.action?.includes('idea')) {
+            hash = '#ideas';
+        } else if (activity.action?.includes('result')) {
+            hash = '#results';
+        } else if (activity.action?.includes('table')) {
+            hash = '#table';
+        }
         return `/post/${activity.post_id}${hash}`;
     }
     return null;

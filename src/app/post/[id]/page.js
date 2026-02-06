@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import MarkdownRenderer, { MarkdownEditor } from '@/components/MarkdownRenderer';
 import RatingPanel from '@/components/RatingPanel';
@@ -40,6 +40,8 @@ export default function PostDetailPage({ params }) {
     const [selectedCategory, setSelectedCategory] = useState('free');
     const [editingCategoryCommentId, setEditingCategoryCommentId] = useState(null);
     const [isElectron, setIsElectron] = useState(false);
+    const [commentSort, setCommentSort] = useState('default');
+    const [showSortMenu, setShowSortMenu] = useState(false);
     const [showAddLinkForm, setShowAddLinkForm] = useState(false);
     const [newLinkTitle, setNewLinkTitle] = useState('');
     const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -49,6 +51,8 @@ export default function PostDetailPage({ params }) {
     const [leftPanelWidth, setLeftPanelWidth] = useState(5); // 左侧标签面板默认宽度 5vw
     const [isLeftPanelResizing, setIsLeftPanelResizing] = useState(false);
     const [sidebarTop, setSidebarTop] = useState('5vh'); // 讨论区动态 top 值
+    const [highlightedCommentId, setHighlightedCommentId] = useState(null); // 高亮的评论ID
+    const [openExploreCommentId, setOpenExploreCommentId] = useState(null); // 需要打开探索弹窗的评论ID
     const saveTimeoutRef = useRef(null);
     const sidebarRef = useRef(null);
     const startXRef = useRef(0);
@@ -56,6 +60,7 @@ export default function PostDetailPage({ params }) {
     const leftPanelStartXRef = useRef(0);
     const leftPanelStartWidthRef = useRef(5);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // 检测 Electron 环境
     useEffect(() => {
@@ -205,6 +210,75 @@ export default function PostDetailPage({ params }) {
         fetchResults();
         fetchIdeas();
     }, [id]);
+
+    // 处理 URL hash，滚动到指定评论或打开探索弹窗
+    useEffect(() => {
+        if (comments.length === 0) return;
+
+        const hash = window.location.hash;
+        if (!hash) return;
+
+        // 处理 #comment-{id} 格式的锚点（评论定位）
+        if (hash.startsWith('#comment-')) {
+            const commentId = hash.replace('#comment-', '');
+            scrollToComment(commentId);
+        }
+
+        // 处理 #explore-{commentId} 格式的锚点（打开探索弹窗）
+        if (hash.startsWith('#explore-')) {
+            const commentId = hash.replace('#explore-', '');
+            const comment = findCommentById(comments, commentId);
+            if (comment && user) {
+                // 先滚动到评论位置
+                scrollToComment(commentId);
+                // 延迟打开探索弹窗，确保滚动完成
+                setTimeout(() => {
+                    setOpenExploreCommentId(parseInt(commentId));
+                }, 500);
+            }
+        }
+    }, [comments, user]);
+
+    // 滚动到指定评论并高亮
+    const scrollToComment = (commentId) => {
+        // 先查找评论信息，自动切换到对应 Tab
+        const comment = findCommentById(comments, commentId);
+        if (comment && comment.category) {
+            // 自动切换到评论所在的 Tab
+            setSelectedCategory(comment.category);
+        }
+        
+        // 延迟执行滚动，等待 Tab 切换和渲染完成
+        setTimeout(() => {
+            const commentElement = document.getElementById(`comment-${commentId}`);
+            if (commentElement) {
+                // 滚动到评论位置
+                commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // 等待滚动接近完成后再开始高亮动画（smooth 滚动大约需要 300-500ms）
+                setTimeout(() => {
+                    // 设置高亮状态，触发 CSS 动画
+                    setHighlightedCommentId(parseInt(commentId));
+                    // 3秒后移除高亮
+                    setTimeout(() => setHighlightedCommentId(null), 3000);
+                }, 400);
+            }
+        }, 100);
+    };
+
+    // 根据 ID 查找评论（支持嵌套回复）
+    const findCommentById = (commentList, commentId) => {
+        for (const comment of commentList) {
+            if (comment.id === parseInt(commentId)) {
+                return comment;
+            }
+            if (comment.replies && comment.replies.length > 0) {
+                const found = findCommentById(comment.replies, commentId);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
 
     const fetchUser = async () => {
         const res = await fetch('/api/auth/me');
@@ -526,10 +600,74 @@ export default function PostDetailPage({ params }) {
         return filterRecursive(tree);
     };
 
-    const filteredCommentTree = filterCommentsByCategory(filterComments(commentTree, commentFilter), selectedCategory);
+    // 排序评论
+    const sortComments = (tree) => {
+        if (commentSort === 'default') return tree;
+
+        const getLatestReplyTime = (item) => {
+            if (!item.replies || item.replies.length === 0) return null;
+            return item.replies.reduce((latest, reply) => {
+                const replyTime = new Date(reply.created_at).getTime();
+                return Math.max(latest, replyTime);
+            }, new Date(item.replies[0]?.created_at).getTime());
+        };
+
+        const getLatestActivityTime = (item) => {
+            const times = [new Date(item.created_at).getTime()];
+            if (item.replies && item.replies.length > 0) {
+                item.replies.forEach(reply => {
+                    times.push(new Date(reply.created_at).getTime());
+                });
+            }
+            if (item.updated_at && item.updated_at !== item.created_at) {
+                times.push(new Date(item.updated_at).getTime());
+            }
+            return Math.max(...times);
+        };
+
+        const sorted = [...tree];
+
+        if (commentSort === 'latestReply') {
+            sorted.sort((a, b) => {
+                const aTime = getLatestReplyTime(a) || new Date(a.created_at).getTime();
+                const bTime = getLatestReplyTime(b) || new Date(b.created_at).getTime();
+                return bTime - aTime;
+            });
+        } else if (commentSort === 'latestActivity') {
+            sorted.sort((a, b) => {
+                const aTime = getLatestActivityTime(a);
+                const bTime = getLatestActivityTime(b);
+                return bTime - aTime;
+            });
+        } else if (commentSort === 'hasReply') {
+            sorted.sort((a, b) => {
+                const aHasReply = a.replies && a.replies.length > 0;
+                const bHasReply = b.replies && b.replies.length > 0;
+                
+                if (aHasReply && !bHasReply) return -1;
+                if (!aHasReply && bHasReply) return 1;
+                
+                if (aHasReply && bHasReply) {
+                    const aReplyTime = getLatestReplyTime(a);
+                    const bReplyTime = getLatestReplyTime(b);
+                    return bReplyTime - aReplyTime;
+                } else {
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                }
+            });
+        }
+
+        return sorted;
+    };
+
+    const filteredCommentTree = sortComments(filterCommentsByCategory(filterComments(commentTree, commentFilter), selectedCategory));
 
     const renderComment = (comment, depth = 0) => (
-        <div key={comment.id} className={`comment-item ${depth > 0 ? 'reply' : ''}`}>
+        <div 
+            key={comment.id} 
+            id={`comment-${comment.id}`}
+            className={`comment-item ${depth > 0 ? 'reply' : ''} ${highlightedCommentId === comment.id ? 'highlighted' : ''}`}
+        >
             <div className="comment-header">
                 <span className="comment-author">{comment.author_name}</span>
                 <span className="comment-time">{formatDate(comment.created_at)}</span>
@@ -668,7 +806,17 @@ export default function PostDetailPage({ params }) {
                         </button>
                     </>
                 )}
-                <ExploreButton commentId={comment.id} commentContent={comment.content} user={user} />
+                <ExploreButton 
+                    commentId={comment.id} 
+                    commentContent={comment.content} 
+                    user={user}
+                    defaultOpen={openExploreCommentId === comment.id}
+                    onOpenChange={(isOpen) => {
+                        if (!isOpen && openExploreCommentId === comment.id) {
+                            setOpenExploreCommentId(null);
+                        }
+                    }}
+                />
             </div>
             {comment.replies?.map(reply => renderComment(reply, depth + 1))}
         </div>
@@ -1271,6 +1419,65 @@ export default function PostDetailPage({ params }) {
                                     </div>
                                 )}
 
+                                {/* 排序选择器 */}
+                                <div className="post-discussion-sort">
+                                    <button
+                                        className="post-discussion-sort-btn"
+                                        onClick={() => setShowSortMenu(!showSortMenu)}
+                                    >
+                                        <span className="sort-icon">
+                                            {commentSort === 'default' && '📋'}
+                                            {commentSort === 'latestReply' && '💬'}
+                                            {commentSort === 'latestActivity' && '🔥'}
+                                            {commentSort === 'hasReply' && '📢'}
+                                        </span>
+                                        <span className="sort-label">
+                                            {commentSort === 'default' && '默认顺序'}
+                                            {commentSort === 'latestReply' && '最新回复'}
+                                            {commentSort === 'latestActivity' && '最新动态'}
+                                            {commentSort === 'hasReply' && '有回复优先'}
+                                        </span>
+                                        <span className="sort-arrow">{showSortMenu ? '▲' : '▼'}</span>
+                                    </button>
+                                    
+                                    {showSortMenu && (
+                                        <div className="post-discussion-sort-menu">
+                                            <button
+                                                className={`post-discussion-sort-item ${commentSort === 'default' ? 'active' : ''}`}
+                                                onClick={() => { setCommentSort('default'); setShowSortMenu(false); }}
+                                            >
+                                                <span className="sort-item-icon">📋</span>
+                                                <span className="sort-item-label">默认顺序</span>
+                                                {commentSort === 'default' && <span className="sort-item-check">✓</span>}
+                                            </button>
+                                            <button
+                                                className={`post-discussion-sort-item ${commentSort === 'latestReply' ? 'active' : ''}`}
+                                                onClick={() => { setCommentSort('latestReply'); setShowSortMenu(false); }}
+                                            >
+                                                <span className="sort-item-icon">💬</span>
+                                                <span className="sort-item-label">最新回复</span>
+                                                {commentSort === 'latestReply' && <span className="sort-item-check">✓</span>}
+                                            </button>
+                                            <button
+                                                className={`post-discussion-sort-item ${commentSort === 'latestActivity' ? 'active' : ''}`}
+                                                onClick={() => { setCommentSort('latestActivity'); setShowSortMenu(false); }}
+                                            >
+                                                <span className="sort-item-icon">🔥</span>
+                                                <span className="sort-item-label">最新动态</span>
+                                                {commentSort === 'latestActivity' && <span className="sort-item-check">✓</span>}
+                                            </button>
+                                            <button
+                                                className={`post-discussion-sort-item ${commentSort === 'hasReply' ? 'active' : ''}`}
+                                                onClick={() => { setCommentSort('hasReply'); setShowSortMenu(false); }}
+                                            >
+                                                <span className="sort-item-icon">📢</span>
+                                                <span className="sort-item-label">有回复优先</span>
+                                                {commentSort === 'hasReply' && <span className="sort-item-check">✓</span>}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* 评论筛选 */}
                                 <div style={{ position: 'relative' }}>
                                     <input
@@ -1394,6 +1601,8 @@ export default function PostDetailPage({ params }) {
                     </div>
                 </div >
             </main >
+
+
         </>
     );
 }
