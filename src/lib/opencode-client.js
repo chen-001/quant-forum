@@ -1,10 +1,17 @@
 import config from '../../data/config.json' with { type: 'json' };
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// 计算项目根目录（兼容开发和生产环境）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.join(__dirname, '..', '..', '..');
 
 const baseURL = process.env.OPENCODE_BASE_URL || config.opencode?.baseURL || 'http://localhost:4095';
 const providerID = process.env.OPENCODE_PROVIDER_ID || config.opencode?.providerID || 'zhipuai-coding-plan';
 const modelID = process.env.OPENCODE_MODEL_ID || config.opencode?.modelID || 'glm-4.7';
 const agent = process.env.OPENCODE_AGENT || config.opencode?.agent || 'build';
-const directory = process.env.OPENCODE_DIRECTORY || process.cwd();
+const directory = process.env.OPENCODE_DIRECTORY || projectRoot;
 
 // 禁用的危险工具列表（可修改文件或执行命令的工具）
 const EXCLUDED_TOOL_IDS = [

@@ -1,12 +1,18 @@
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// 计算项目根目录（兼容开发和生产环境）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.join(__dirname, '..', '..');
 
 // 读取配置文件获取API key
 let zhipuaiApiKey = '';
 async function loadConfig() {
     try {
-        const configPath = path.join(process.cwd(), 'data', 'config.json');
+        const configPath = path.join(projectRoot, 'data', 'config.json');
         const configContent = await fs.readFile(configPath, 'utf-8');
         const config = JSON.parse(configContent);
         zhipuaiApiKey = config.zhipuai_api_key || '';
@@ -17,8 +23,8 @@ async function loadConfig() {
 loadConfig();
 
 const PYTHON_PATH = '/home/chenzongwei/.conda/envs/chenzongwei311/bin/python3';
-const OCR_SCRIPT = path.join(process.cwd(), 'scripts', 'ocr_processor.py');
-const FAILED_LOG_PATH = path.join(process.cwd(), 'data', 'ocr_failed.txt');
+const OCR_SCRIPT = path.join(projectRoot, 'scripts', 'ocr_processor.py');
+const FAILED_LOG_PATH = path.join(projectRoot, 'data', 'ocr_failed.txt');
 
 let isRunning = false;
 let processingCount = 0;
@@ -52,7 +58,7 @@ async function extractFilename(imageUrl) {
 async function runPythonOCR(content) {
     return new Promise((resolve) => {
         const contentJson = JSON.stringify({ content });
-        const python = spawn(PYTHON_PATH, [OCR_SCRIPT, 'process', contentJson, process.cwd()], {
+        const python = spawn(PYTHON_PATH, [OCR_SCRIPT, 'process', contentJson, projectRoot], {
             timeout: 180000,
             env: {
                 ...process.env,

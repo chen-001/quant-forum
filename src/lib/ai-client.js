@@ -1,8 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { postSummaryQueries } from './db.js';
 
-const configPath = path.join(process.cwd(), 'data', 'config.json');
+// 计算项目根目录（兼容开发和生产环境）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.join(__dirname, '..', '..');
+
+const configPath = path.join(projectRoot, 'data', 'config.json');
 const config = (() => {
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
