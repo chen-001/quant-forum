@@ -4,6 +4,12 @@ import { getSessionFromCookies } from '@/lib/session';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+
+// 计算项目根目录（兼容开发和生产环境）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.join(__dirname, '..', '..', '..', '..', '..');
 
 export async function POST(request) {
     try {
@@ -28,7 +34,7 @@ export async function POST(request) {
         const filename = `${uuidv4()}${ext}`;
 
         // 确保上传目录存在
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        const uploadDir = path.join(projectRoot, 'public', 'uploads');
         await mkdir(uploadDir, { recursive: true });
 
         // 保存文件
