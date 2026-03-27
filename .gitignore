@@ -47,6 +47,7 @@ next-env.d.ts
 data/config.json
 
 public/uploads/*
+data/uploads/
 data/forum.db
 dist-electron/*
 .trae/documents/实现div元素右侧对齐.md
@@ -62,3 +63,5 @@ test_ocr.py
 .vtcode/skills/INDEX.md
 .vtcode/terminals/INDEX.md
 vtcode.toml
+scripts/keepalive.sh
+keepalive.log

@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionFromCookies } from '@/lib/session';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
-
-// 计算项目根目录（兼容开发和生产环境）
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.join(__dirname, '..', '..', '..', '..', '..');
+import { buildUploadUrl, ensureUploadStorageDir } from '@/lib/upload-storage';
 
 export async function POST(request) {
     try {
@@ -33,16 +28,14 @@ export async function POST(request) {
         const ext = path.extname(file.name);
         const filename = `${uuidv4()}${ext}`;
 
-        // 确保上传目录存在
-        const uploadDir = path.join(projectRoot, 'public', 'uploads');
-        await mkdir(uploadDir, { recursive: true });
+        const uploadDir = await ensureUploadStorageDir();
 
         // 保存文件
         const filepath = path.join(uploadDir, filename);
         await writeFile(filepath, buffer);
 
         // 返回文件URL
-        const fileUrl = `/uploads/${filename}`;
+        const fileUrl = buildUploadUrl(filename);
 
         return NextResponse.json({
             url: fileUrl,

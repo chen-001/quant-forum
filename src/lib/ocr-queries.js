@@ -1,7 +1,7 @@
 import { getDb } from './db';
 import { ocrQueue } from './ocr-queue';
 
-const IMAGE_PATTERN = /!\[.*?\]\((\/uploads\/[^)]+)\)/g;
+const IMAGE_PATTERN = /!\[.*?\]\(((?:\/uploads\/|\/api\/upload\/files\/)[^)]+)\)/g;
 
 function extractImages(content) {
     const images = [];

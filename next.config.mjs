@@ -22,6 +22,17 @@ const nextConfig = {
 
   // Turbopack配置（Next.js 16默认使用）
   turbopack: {},
+
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/uploads/:path*',
+          destination: '/api/upload/files/:path*',
+        },
+      ],
+    };
+  },
 };
 
 export default nextConfig;

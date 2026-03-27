@@ -1,12 +1,9 @@
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { extractUploadFilenameFromUrl, resolveProjectRoot } from './upload-storage';
 
-// 计算项目根目录（兼容开发和生产环境）
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.join(__dirname, '..', '..');
+const projectRoot = resolveProjectRoot();
 
 // 读取配置文件获取API key
 let zhipuaiApiKey = '';
@@ -51,8 +48,7 @@ async function logFailedImage(filename, error) {
 }
 
 async function extractFilename(imageUrl) {
-    const match = imageUrl.match(/\/uploads\/([^\/]+\.(jpg|jpeg|png|gif|webp))/i);
-    return match ? match[1] : imageUrl;
+    return extractUploadFilenameFromUrl(imageUrl) || imageUrl;
 }
 
 async function runPythonOCR(content) {
